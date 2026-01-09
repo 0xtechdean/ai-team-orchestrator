@@ -21,11 +21,14 @@
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.52.0",
+    "cors": "^2.8.5",
     "croner": "^8.1.2",
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
     "ioredis": "^5.4.2",
-    "mem0ai": "^1.0.15"
+    "mem0ai": "^1.0.15",
+    "puppeteer": "^19.0.0",
+    "puppeteer-screen-recorder": "^3.0.6"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
