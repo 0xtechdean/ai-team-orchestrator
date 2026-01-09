@@ -114,7 +114,46 @@ async function recordDemo() {
   try {
     // Scene 1: Show dashboard with tasks (already loaded and ready)
     console.log('Scene 1: Dashboard with tasks');
-    await sleep(2000);
+    await sleep(1500);
+
+    // Scene 1.5: Click on backend agent to show details
+    console.log('Scene 1.5: Show agent details');
+
+    // Highlight the backend agent in sidebar
+    await page.evaluate(() => {
+      const agents = document.querySelectorAll('.agent-item');
+      agents.forEach((agent) => {
+        if (agent.textContent?.includes('backend')) {
+          (agent as HTMLElement).style.boxShadow = '0 0 0 2px #3b82f6';
+          (agent as HTMLElement).style.background = 'rgba(59, 130, 246, 0.1)';
+        }
+      });
+    });
+    await sleep(800);
+
+    // Click to open agent modal
+    await page.evaluate(() => {
+      // @ts-ignore
+      if (typeof openAgentModal === 'function') openAgentModal('backend');
+    });
+    await sleep(2500);
+
+    // Close agent modal
+    await page.evaluate(() => {
+      // @ts-ignore
+      if (typeof closeAgentModal === 'function') closeAgentModal();
+    });
+    await sleep(500);
+
+    // Reset agent highlight
+    await page.evaluate(() => {
+      const agents = document.querySelectorAll('.agent-item');
+      agents.forEach((agent) => {
+        (agent as HTMLElement).style.boxShadow = '';
+        (agent as HTMLElement).style.background = '';
+      });
+    });
+    await sleep(500);
 
     // Scene 2: Highlight a task and move it to ready
     console.log('Scene 2: Move task to Ready');
