@@ -4,6 +4,8 @@ A self-improving multi-agent system that coordinates AI agents to work on tasks 
 
 ![Demo](demo/demo.gif)
 
+*Demo: Task moves to Ready → Agent picks it up → Creates Slack channel → Real-time conversation → Task completed*
+
 ## Features
 
 - **Multi-Agent Orchestration**: Coordinate multiple AI agents with different roles and capabilities
