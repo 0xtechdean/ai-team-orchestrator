@@ -198,21 +198,29 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.125rem;
       position: relative;
+      overflow: hidden;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-color);
+    }
+
+    .agent-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .agent-avatar.manager {
-      background: linear-gradient(135deg, #6366f1, #818cf8);
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+      border-color: #a5b4fc;
+      background: #eef2ff;
     }
     .agent-avatar.specialist {
-      background: linear-gradient(135deg, #2563eb, #3b82f6);
-      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+      border-color: #93c5fd;
+      background: #eff6ff;
     }
     .agent-avatar.support {
-      background: linear-gradient(135deg, #059669, #10b981);
-      box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+      border-color: #6ee7b7;
+      background: #ecfdf5;
     }
 
     .agent-status {
@@ -483,13 +491,9 @@
       width: 24px;
       height: 24px;
       border-radius: 6px;
-      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.625rem;
-      font-weight: 700;
-      color: white;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-color);
+      object-fit: cover;
     }
 
     .task-actions {
@@ -739,9 +743,15 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.75rem;
-      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-      box-shadow: 0 4px 16px var(--glow-primary);
+      overflow: hidden;
+      background: var(--bg-elevated);
+      border: 2px solid var(--border-color);
+    }
+
+    .agent-detail-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .agent-detail-info {
@@ -1025,7 +1035,7 @@
       agentList.innerHTML = agents.map(agent => `
         <li class="agent-item" onclick="openAgentModal('${agent.name}')">
           <div class="agent-avatar ${agent.role}">
-            ${getAgentEmoji(agent.role)}
+            <img src="${getAgentAvatarUrl(agent.name, agent.role)}" alt="${agent.name}">
             <div class="agent-status"></div>
           </div>
           <div class="agent-info">
@@ -1036,9 +1046,24 @@
       `).join('');
     }
 
-    function getAgentEmoji(role) {
-      const emojis = { manager: '👔', specialist: '⚡', support: '🛡️' };
-      return emojis[role] || '🤖';
+    // Generate DiceBear avatar URL based on agent name and role
+    function getAgentAvatarUrl(name, role) {
+      // Use different styles for different roles
+      const styles = {
+        manager: 'notionists',
+        specialist: 'bottts-neutral',
+        support: 'lorelei'
+      };
+      const style = styles[role] || 'bottts-neutral';
+      const seed = encodeURIComponent(name);
+      return `https://api.dicebear.com/9.x/${style}/svg?seed=${seed}&backgroundColor=transparent`;
+    }
+
+    // Get avatar URL for task owner (lookup agent role)
+    function getOwnerAvatarUrl(ownerName) {
+      const agent = agents.find(a => a.name === ownerName);
+      const role = agent ? agent.role : 'specialist';
+      return getAgentAvatarUrl(ownerName, role);
     }
 
     // Agent modal
@@ -1051,8 +1076,8 @@
       selectedAgentName = agentName;
 
       // Set header
-      document.getElementById('agent-modal-title').textContent = `${getAgentEmoji(agent.role)} ${agent.name}`;
-      document.getElementById('agent-detail-avatar').textContent = getAgentEmoji(agent.role);
+      document.getElementById('agent-modal-title').innerHTML = `<img src="${getAgentAvatarUrl(agent.name, agent.role)}" style="width:24px;height:24px;border-radius:6px;vertical-align:middle;margin-right:8px;">${agent.name}`;
+      document.getElementById('agent-detail-avatar').innerHTML = `<img src="${getAgentAvatarUrl(agent.name, agent.role)}" alt="${agent.name}">`;
       document.getElementById('agent-detail-name').textContent = agent.name;
       document.getElementById('agent-detail-role').textContent = agent.role;
 
@@ -1158,7 +1183,7 @@
             ${task.description ? `<div class="task-description">${escapeHtml(task.description)}</div>` : ''}
             <div class="task-footer">
               <div class="task-owner">
-                ${task.owner ? `<div class="owner-avatar">${task.owner.charAt(0).toUpperCase()}</div>${task.owner}` : '<span style="color: var(--text-muted);">Unassigned</span>'}
+                ${task.owner ? `<img class="owner-avatar" src="${getOwnerAvatarUrl(task.owner)}" alt="${task.owner}">${task.owner}` : '<span style="color: var(--text-muted);">Unassigned</span>'}
               </div>
               <div class="task-actions">
                 <button class="task-action-btn" onclick="deleteTask('${task.id}')" title="Delete">🗑️</button>
