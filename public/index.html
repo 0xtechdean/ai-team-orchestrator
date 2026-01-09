@@ -15,58 +15,58 @@
     }
 
     :root {
-      --bg-primary: #0a0a0f;
-      --bg-secondary: #12121a;
-      --bg-card: #16161f;
-      --bg-elevated: #1a1a24;
-      --border-color: rgba(255, 255, 255, 0.08);
-      --border-hover: rgba(255, 255, 255, 0.15);
-      --text-primary: #ffffff;
-      --text-secondary: #a1a1aa;
-      --text-muted: #71717a;
+      --bg-primary: #ffffff;
+      --bg-secondary: #f8fafc;
+      --bg-card: #ffffff;
+      --bg-elevated: #f1f5f9;
+      --border-color: #e2e8f0;
+      --border-hover: #cbd5e1;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #94a3b8;
       --accent-primary: #3b82f6;
-      --accent-secondary: #06b6d4;
+      --accent-secondary: #0891b2;
       --accent-success: #10b981;
       --accent-warning: #f59e0b;
       --accent-danger: #ef4444;
-      --glow-primary: rgba(59, 130, 246, 0.12);
-      --glow-cyan: rgba(6, 182, 212, 0.12);
+      --glow-primary: rgba(59, 130, 246, 0.08);
+      --glow-cyan: rgba(8, 145, 178, 0.08);
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
     }
 
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--bg-primary);
+      background: var(--bg-secondary);
       color: var(--text-primary);
       min-height: 100vh;
       overflow-x: hidden;
     }
 
-    /* Subtle background gradient */
+    /* Subtle top gradient */
     body::before {
       content: '';
       position: fixed;
       top: 0;
       left: 0;
       right: 0;
-      height: 400px;
-      background: radial-gradient(ellipse 80% 50% at 50% -30%, var(--glow-primary), transparent),
-                  radial-gradient(ellipse 50% 30% at 80% 0%, var(--glow-cyan), transparent);
+      height: 300px;
+      background: linear-gradient(180deg, rgba(59, 130, 246, 0.03) 0%, transparent 100%);
       pointer-events: none;
       z-index: 0;
-      opacity: 0.8;
     }
 
     .header {
       position: relative;
       z-index: 10;
-      background: rgba(10, 10, 15, 0.8);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      background: var(--bg-primary);
       border-bottom: 1px solid var(--border-color);
       padding: 1rem 2rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      box-shadow: var(--shadow-sm);
     }
 
     .logo {
@@ -142,9 +142,7 @@
 
     .sidebar {
       width: 280px;
-      background: rgba(18, 18, 26, 0.6);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
+      background: var(--bg-primary);
       border-right: 1px solid var(--border-color);
       padding: 1.5rem;
       overflow-y: auto;
@@ -316,18 +314,17 @@
     .column {
       min-width: 300px;
       max-width: 320px;
-      background: rgba(22, 22, 31, 0.6);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
+      background: var(--bg-primary);
       border: 1px solid var(--border-color);
-      border-radius: 16px;
+      border-radius: 12px;
       display: flex;
       flex-direction: column;
       transition: all 0.2s ease;
+      box-shadow: var(--shadow-sm);
     }
 
     .column:hover {
-      border-color: var(--border-hover);
+      box-shadow: var(--shadow-md);
     }
 
     .column-header {
@@ -377,7 +374,7 @@
     .task-card {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
-      border-radius: 12px;
+      border-radius: 10px;
       padding: 1rem;
       margin-bottom: 0.625rem;
       cursor: grab;
@@ -391,9 +388,9 @@
       position: absolute;
       top: 0;
       left: 0;
-      right: 0;
-      height: 3px;
-      background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+      width: 4px;
+      height: 100%;
+      background: var(--accent-primary);
       opacity: 0;
       transition: opacity 0.2s ease;
     }
@@ -401,7 +398,7 @@
     .task-card:hover {
       border-color: var(--border-hover);
       transform: translateY(-2px);
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+      box-shadow: var(--shadow-md);
     }
 
     .task-card:hover::before {
@@ -410,7 +407,7 @@
 
     .task-card.dragging {
       opacity: 0.5;
-      transform: rotate(3deg);
+      transform: rotate(2deg);
     }
 
     .task-priority {
@@ -427,24 +424,24 @@
     }
 
     .priority-P0 {
-      background: rgba(239, 68, 68, 0.15);
-      color: #f87171;
-      border: 1px solid rgba(239, 68, 68, 0.3);
+      background: #fef2f2;
+      color: #dc2626;
+      border: 1px solid #fecaca;
     }
     .priority-P1 {
-      background: rgba(245, 158, 11, 0.15);
-      color: #fbbf24;
-      border: 1px solid rgba(245, 158, 11, 0.3);
+      background: #fffbeb;
+      color: #d97706;
+      border: 1px solid #fde68a;
     }
     .priority-P2 {
-      background: rgba(59, 130, 246, 0.15);
-      color: #60a5fa;
-      border: 1px solid rgba(59, 130, 246, 0.3);
+      background: #eff6ff;
+      color: #2563eb;
+      border: 1px solid #bfdbfe;
     }
     .priority-P3 {
-      background: rgba(100, 116, 139, 0.15);
-      color: #94a3b8;
-      border: 1px solid rgba(100, 116, 139, 0.3);
+      background: #f8fafc;
+      color: #64748b;
+      border: 1px solid #e2e8f0;
     }
 
     .task-title {
@@ -552,9 +549,9 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(0, 0, 0, 0.8);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      background: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
       z-index: 100;
       align-items: center;
       justify-content: center;
@@ -565,13 +562,13 @@
     }
 
     .modal {
-      background: var(--bg-secondary);
+      background: var(--bg-primary);
       border: 1px solid var(--border-color);
       border-radius: 20px;
       padding: 2rem;
       width: 100%;
       max-width: 480px;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
     }
 
     .modal h2 {
@@ -820,9 +817,9 @@
     }
 
     .tool-tag {
-      background: rgba(6, 182, 212, 0.1);
-      border-color: rgba(6, 182, 212, 0.3);
-      color: var(--accent-secondary);
+      background: #ecfeff;
+      border-color: #a5f3fc;
+      color: #0891b2;
     }
 
     .prompt-preview {
