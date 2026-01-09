@@ -236,18 +236,32 @@ When Slack is configured, each agent task gets its own dedicated channel:
 2. Add Bot Token Scopes:
    - `channels:manage` - Create channels
    - `channels:read` - List channels
+   - `channels:history` - Read messages from channels
    - `chat:write` - Post messages
    - `channels:join` - Join channels
+   - `users:read` - Get user info for message attribution
 3. Install the app to your workspace
 4. Copy the Bot Token (`xoxb-...`) to `SLACK_BOT_TOKEN`
+
+### Two-Way Communication
+
+Agents can both **read** and **write** messages in their task channels:
+
+- **Reading**: Agent sees recent team messages in its context
+- **Writing**: Agent posts progress updates and completion summaries
+
+This enables real-time collaboration where team members can:
+- Ask the agent questions mid-task
+- Provide additional context or requirements
+- Get status updates without leaving Slack
 
 ### Channel Lifecycle
 
 ```
 Task Starts → Channel Created → Agent Posts Updates → Task Completes → Topic Updated
-                   ↓
-         Users can communicate
-         with agent in channel
+                   ↓                    ↑
+         Users post messages    Agent reads messages
+         in the channel         before each action
 ```
 
 ### Example Channel Message

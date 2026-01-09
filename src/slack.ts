@@ -8,9 +8,18 @@ interface SlackChannel {
   name: string;
 }
 
+interface SlackMessage {
+  ts: string;
+  user?: string;
+  text: string;
+  bot_id?: string;
+}
+
 interface SlackResponse {
   ok: boolean;
   channel?: SlackChannel;
+  channels?: Array<{ id: string; name: string }>;
+  messages?: SlackMessage[];
   error?: string;
 }
 
@@ -141,6 +150,119 @@ export class SlackService {
       console.error('[Slack] Error archiving channel:', error);
       return false;
     }
+  }
+
+  /**
+   * Read messages from a channel
+   * @param channelId - The channel to read from
+   * @param limit - Maximum number of messages to retrieve (default: 20)
+   * @param oldest - Only get messages after this timestamp
+   */
+  async readMessages(
+    channelId: string,
+    limit: number = 20,
+    oldest?: string
+  ): Promise<Array<{ user: string; text: string; ts: string; isBot: boolean }>> {
+    if (!this.token) return [];
+
+    try {
+      const params: Record<string, unknown> = {
+        channel: channelId,
+        limit,
+      };
+      if (oldest) {
+        params.oldest = oldest;
+      }
+
+      const response = await this.apiCall('conversations.history', params);
+
+      if (!response.ok || !response.messages) {
+        console.error('[Slack] Failed to read messages:', response.error);
+        return [];
+      }
+
+      // Get user info for each message
+      const messages = await Promise.all(
+        response.messages.map(async (msg) => {
+          const userName = msg.user ? await this.getUserName(msg.user) : 'Bot';
+          return {
+            user: userName,
+            text: msg.text,
+            ts: msg.ts,
+            isBot: !!msg.bot_id,
+          };
+        })
+      );
+
+      // Return in chronological order (oldest first)
+      return messages.reverse();
+    } catch (error) {
+      console.error('[Slack] Error reading messages:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get user-only messages (exclude bot messages)
+   */
+  async readUserMessages(
+    channelId: string,
+    limit: number = 10,
+    oldest?: string
+  ): Promise<Array<{ user: string; text: string; ts: string }>> {
+    const messages = await this.readMessages(channelId, limit * 2, oldest);
+    return messages
+      .filter(m => !m.isBot)
+      .slice(0, limit)
+      .map(({ user, text, ts }) => ({ user, text, ts }));
+  }
+
+  /**
+   * Format messages for agent context
+   */
+  async getChannelContext(channelId: string, limit: number = 10): Promise<string> {
+    const messages = await this.readUserMessages(channelId, limit);
+
+    if (messages.length === 0) {
+      return '';
+    }
+
+    const formatted = messages
+      .map(m => `**${m.user}**: ${m.text}`)
+      .join('\n');
+
+    return `\n## Team Messages\nRecent messages from the team in your task channel:\n${formatted}`;
+  }
+
+  /**
+   * Get user display name from user ID
+   */
+  private userCache: Map<string, string> = new Map();
+
+  private async getUserName(userId: string): Promise<string> {
+    if (this.userCache.has(userId)) {
+      return this.userCache.get(userId)!;
+    }
+
+    try {
+      const response = await fetch(`https://slack.com/api/users.info?user=${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${this.token}`,
+        },
+      });
+
+      const data = await response.json() as { ok: boolean; user?: { real_name?: string; name?: string } };
+
+      if (data.ok && data.user) {
+        const name = data.user.real_name || data.user.name || userId;
+        this.userCache.set(userId, name);
+        return name;
+      }
+    } catch (error) {
+      console.error('[Slack] Error getting user info:', error);
+    }
+
+    return userId;
   }
 
   /**

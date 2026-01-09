@@ -118,10 +118,17 @@ Create handoffs in docs/handoffs/ when passing work to other agents.`;
       await agentRegistry.trackPattern(taskPattern.pattern, taskPattern.domain, task);
     }
 
-    // Build Slack context for the agent
-    const slackContext = slackChannelId
-      ? `\n## Slack Channel\nYou have a dedicated Slack channel for this task: Use it to post progress updates and communicate with the team.`
-      : '';
+    // Build Slack context for the agent (including any team messages)
+    let slackContext = '';
+    if (slackChannelId) {
+      slackContext = `\n## Slack Channel\nYou have a dedicated Slack channel for this task. Use it to post progress updates and communicate with the team.`;
+
+      // Read any messages from the team
+      const channelMessages = await slackService.getChannelContext(slackChannelId, 10);
+      if (channelMessages) {
+        slackContext += channelMessages;
+      }
+    }
 
     const systemPrompt = `${agentDef}
 
