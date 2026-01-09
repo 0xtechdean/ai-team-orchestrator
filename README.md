@@ -2,6 +2,8 @@
 
 A self-improving multi-agent system that coordinates AI agents to work on tasks collaboratively. Agents can create new agents, define reusable skills, and evolve based on performance metrics.
 
+![Demo](demo/demo.gif)
+
 ## Features
 
 - **Multi-Agent Orchestration**: Coordinate multiple AI agents with different roles and capabilities
