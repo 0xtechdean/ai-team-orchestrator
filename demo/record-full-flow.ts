@@ -115,18 +115,44 @@ async function recordDemo() {
     const tasks = await tasksRes.json();
     const backlogTask = tasks.find((t: any) => t.status === 'backlog' && t.title.includes('auth'));
 
-    // Add action indicator
+    // Highlight the task card in backlog before moving
+    await page.evaluate(() => {
+      // Find the auth task card in the backlog column
+      const cards = document.querySelectorAll('[class*="card"], [class*="task"]');
+      cards.forEach((card) => {
+        if (card.textContent?.includes('auth')) {
+          (card as HTMLElement).style.boxShadow = '0 0 0 3px #fbbf24, 0 8px 24px rgba(251,191,36,0.4)';
+          (card as HTMLElement).style.transform = 'scale(1.02)';
+          (card as HTMLElement).style.transition = 'all 0.3s ease';
+        }
+      });
+    });
+    await sleep(1500);
+
+    // Add action indicator showing "dragging"
     await page.evaluate(() => {
       const indicator = document.createElement('div');
       indicator.id = 'action-indicator';
       indicator.innerHTML = `<div style="position:fixed;bottom:20px;left:20px;background:#1e1e1e;border-radius:8px;padding:14px 18px;font-family:Monaco,monospace;font-size:13px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:10000;min-width:450px;">
-        <div style="color:#fbbf24;">📋 Moving task to Ready...</div>
+        <div style="color:#fbbf24;">📋 Moving "Build user auth API" to Ready...</div>
       </div>`;
       document.body.appendChild(indicator);
     });
-    await sleep(1500);
+    await sleep(1000);
 
-    // Move task to ready
+    // Animate the card fading out
+    await page.evaluate(() => {
+      const cards = document.querySelectorAll('[class*="card"], [class*="task"]');
+      cards.forEach((card) => {
+        if (card.textContent?.includes('auth')) {
+          (card as HTMLElement).style.opacity = '0.3';
+          (card as HTMLElement).style.transform = 'scale(0.95) translateX(100px)';
+        }
+      });
+    });
+    await sleep(600);
+
+    // Move task to ready via API
     if (backlogTask) {
       await fetch(`${API_URL}/tasks/${backlogTask.id}`, {
         method: 'PATCH',
@@ -137,7 +163,28 @@ async function recordDemo() {
 
     // Refresh to show updated board
     await page.reload({ waitUntil: 'networkidle0' });
-    await sleep(1500);
+
+    // Highlight the moved task in Ready column
+    await page.evaluate(() => {
+      const cards = document.querySelectorAll('[class*="card"], [class*="task"]');
+      cards.forEach((card) => {
+        if (card.textContent?.includes('auth')) {
+          (card as HTMLElement).style.boxShadow = '0 0 0 3px #4ade80, 0 8px 24px rgba(74,222,128,0.4)';
+          (card as HTMLElement).style.transition = 'all 0.3s ease';
+        }
+      });
+    });
+
+    // Update indicator to show success
+    await page.evaluate(() => {
+      const indicator = document.getElementById('action-indicator');
+      if (indicator) {
+        indicator.innerHTML = `<div style="position:fixed;bottom:20px;left:20px;background:#1e1e1e;border-radius:8px;padding:14px 18px;font-family:Monaco,monospace;font-size:13px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:10000;min-width:450px;">
+          <div style="color:#4ade80;">✓ Task moved to Ready column</div>
+        </div>`;
+      }
+    });
+    await sleep(2000);
 
     // Scene 3: Agent picks up task
     console.log('Scene 3: Agent picks up task');
