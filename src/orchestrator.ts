@@ -7,6 +7,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { memoryService, MemoryService } from './memory';
 import { taskDb, Task } from './taskdb';
 import { agentRegistry } from './agent-registry';
+import { slackService } from './slack';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
@@ -15,6 +16,7 @@ interface AgentContext {
   files?: string[];
   previousOutput?: string;
   taskId?: string;
+  slackChannelId?: string;
 }
 
 export class AgentOrchestrator {
@@ -74,6 +76,17 @@ Create handoffs in docs/handoffs/ when passing work to other agents.`;
   async runAgent(agentName: string, task: string, context?: AgentContext): Promise<string> {
     console.log(`[Orchestrator] Running ${agentName} agent...`);
     const startTime = Date.now();
+    const taskId = context?.taskId || this.generateTaskId();
+
+    // Create Slack channel for this task
+    let slackChannelId = context?.slackChannelId;
+    if (!slackChannelId && slackService.isEnabled()) {
+      const channel = await slackService.createTaskChannel(agentName, taskId, task);
+      if (channel) {
+        slackChannelId = channel.id;
+        console.log(`[Orchestrator] Created Slack channel for task: #task-${agentName}-${taskId}`);
+      }
+    }
 
     const agentDef = await this.loadAgentDefinition(agentName);
     const projectContext = await this.loadProjectContext();
@@ -105,11 +118,17 @@ Create handoffs in docs/handoffs/ when passing work to other agents.`;
       await agentRegistry.trackPattern(taskPattern.pattern, taskPattern.domain, task);
     }
 
+    // Build Slack context for the agent
+    const slackContext = slackChannelId
+      ? `\n## Slack Channel\nYou have a dedicated Slack channel for this task: Use it to post progress updates and communicate with the team.`
+      : '';
+
     const systemPrompt = `${agentDef}
 
 ## Current Project Context
 ${projectContext}
 ${memoryContext}
+${slackContext}
 
 ## Available Team Members
 ${agentList}
@@ -170,11 +189,29 @@ Output your actions and results in a structured format.`;
 
     await this.memory.recordTaskCompletion(
       agentName,
-      context?.taskId || 'unknown',
+      taskId,
       task.substring(0, 100),
       result,
       learnings
     );
+
+    // Post completion update to Slack channel
+    if (slackChannelId) {
+      const statusEmoji = success ? '✅' : '❌';
+      const completionMessage = `${statusEmoji} *Task Completed*
+
+*Agent:* ${agentName}
+*Duration:* ${Math.round(executionTime / 1000)}s
+*Status:* ${success ? 'Success' : 'Failed'}
+
+*Summary:*
+${result.substring(0, 1000)}${result.length > 1000 ? '...' : ''}
+
+${learnings.length > 0 ? `*Learnings:*\n${learnings.map(l => `• ${l}`).join('\n')}` : ''}`;
+
+      await slackService.postMessage(slackChannelId, completionMessage);
+      await slackService.updateChannelTopic(slackChannelId, `${statusEmoji} ${success ? 'Completed' : 'Failed'} - ${agentName}`);
+    }
 
     if (this.onNotification) {
       await this.onNotification(`Agent *${agentName}* completed task:\n${task}\n\n${result.substring(0, 500)}...`);
@@ -295,6 +332,10 @@ Output your actions and results in a structured format.`;
     }
 
     return 'general';
+  }
+
+  private generateTaskId(): string {
+    return Math.random().toString(36).substring(2, 10);
   }
 
   private extractPattern(task: string): { pattern: string; domain: string } | null {

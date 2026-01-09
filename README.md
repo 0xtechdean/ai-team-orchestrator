@@ -10,6 +10,7 @@ A self-improving multi-agent system that coordinates AI agents to work on tasks 
 - **Shared Memory**: Agents share learnings via Mem0 for collective intelligence
 - **Role-Based Permissions**: Manager, Specialist, and Support roles with different capabilities
 - **Pattern Recognition**: Automatically identifies recurring patterns and suggests automations
+- **Slack Integration**: Creates dedicated channels for each task, enabling real-time communication with agents
 
 ## Architecture
 
@@ -96,6 +97,8 @@ Open http://localhost:3000 to access the Kanban dashboard.
 | `REDIS_URL` | No | Redis connection URL (uses in-memory if not set) |
 | `REPO_PATH` | No | Path to load agent definitions from |
 | `PORT` | No | Server port (default: 3000) |
+| `SLACK_BOT_TOKEN` | No | Slack Bot Token for task channels |
+| `SLACK_CHANNEL_ID` | No | Default Slack channel for notifications |
 
 ### Agent Definitions
 
@@ -216,12 +219,56 @@ await memory.addMemory(
 const memories = await memory.searchMemories("pagination", undefined, 5);
 ```
 
+## Slack Integration
+
+When Slack is configured, each agent task gets its own dedicated channel:
+
+### How It Works
+
+1. **Channel Creation**: When an agent starts a task, a channel is created: `#task-{agent}-{taskId}`
+2. **Initial Context**: The channel receives the task details and agent information
+3. **Progress Updates**: Agents post updates as they work
+4. **Completion**: Final results and learnings are posted; topic is updated with status
+
+### Setting Up Slack
+
+1. Create a Slack App at https://api.slack.com/apps
+2. Add Bot Token Scopes:
+   - `channels:manage` - Create channels
+   - `channels:read` - List channels
+   - `chat:write` - Post messages
+   - `channels:join` - Join channels
+3. Install the app to your workspace
+4. Copy the Bot Token (`xoxb-...`) to `SLACK_BOT_TOKEN`
+
+### Channel Lifecycle
+
+```
+Task Starts → Channel Created → Agent Posts Updates → Task Completes → Topic Updated
+                   ↓
+         Users can communicate
+         with agent in channel
+```
+
+### Example Channel Message
+
+```
+🤖 Agent backend is starting work on this task
+
+Task: Implement user authentication API
+Task ID: abc12345
+Status: In Progress
+
+---
+Use this channel to communicate with the agent about this task.
+```
+
 ## Task Workflow
 
 1. Tasks start in **Backlog**
 2. Move to **Ready** when unblocked
-3. Agent picks up and moves to **In Progress**
-4. Agent completes and moves to **Done**
+3. Agent picks up and moves to **In Progress** (Slack channel created)
+4. Agent completes and moves to **Done** (Slack channel updated)
 5. PM evaluates and creates follow-up tasks
 
 ## Deployment
