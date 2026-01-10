@@ -144,10 +144,17 @@ async function recordDemo() {
   console.log('📹 Recording started...');
 
   try {
-    // ========== SCENE 1: Kanban Dashboard ==========
-    console.log('Scene 1: Kanban Dashboard');
+    // ========== SCENE 1: Agents Registry - Meet the Team ==========
+    console.log('Scene 1: Agents Registry - Meet the Team');
     await page.goto(DASHBOARD_URL, { waitUntil: 'networkidle0' });
-    await sleep(1500);
+    await sleep(500);
+
+    // Go straight to Agents view
+    await page.evaluate(() => {
+      const btns = document.querySelectorAll('.nav-btn');
+      btns.forEach((btn: any) => { if (btn.textContent?.includes('AGENTS')) btn.click(); });
+    });
+    await sleep(1000);
 
     await page.evaluate(() => {
       const title = document.createElement('div');
@@ -157,14 +164,27 @@ async function recordDemo() {
         background: #2563eb; color: white; padding: 12px 28px; border-radius: 8px;
         font-family: -apple-system, sans-serif; font-size: 18px; font-weight: 600;
         z-index: 10000; box-shadow: 0 4px 16px rgba(37,99,235,0.4);
-      ">Kanban Task Board</div>`;
+      ">AI Agent Registry</div>`;
       document.body.appendChild(title);
     });
-    await sleep(2500);
+    await sleep(3000);
+
+    // Click on first agent card to show details
+    await page.evaluate(() => {
+      const cards = document.querySelectorAll('.agent-card');
+      if (cards.length > 0) (cards[0] as HTMLElement).click();
+    });
+    await sleep(2000);
     await page.evaluate(() => document.getElementById('demo-title')?.remove());
 
-    // ========== SCENE 2: Show Gantt with in-progress tasks ==========
-    console.log('Scene 2: Gantt Chart - Project Timeline');
+    // ========== SCENE 2: Kanban Dashboard ==========
+    console.log('Scene 2: Kanban Dashboard');
+    await page.evaluate(() => {
+      const btns = document.querySelectorAll('.nav-btn');
+      btns.forEach((btn: any) => { if (btn.textContent?.includes('TASKS')) btn.click(); });
+    });
+    await sleep(1000);
+
     await page.evaluate(() => {
       const title = document.createElement('div');
       title.id = 'demo-title';
@@ -173,26 +193,14 @@ async function recordDemo() {
         background: #2563eb; color: white; padding: 10px 24px; border-radius: 8px;
         font-family: -apple-system, sans-serif; font-size: 16px; font-weight: 600;
         z-index: 10000;
-      ">Project Timeline</div>`;
+      ">Task Board</div>`;
       document.body.appendChild(title);
     });
-    await page.evaluate(() => {
-      const btns = document.querySelectorAll('.nav-btn');
-      btns.forEach((btn: any) => { if (btn.textContent?.includes('GANTT')) btn.click(); });
-    });
-    await sleep(3000);
+    await sleep(2500);
     await page.evaluate(() => document.getElementById('demo-title')?.remove());
 
-    // ========== SCENE 3: Quick look at existing traces ==========
-    console.log('Scene 3: Existing Activity Traces');
-    await page.evaluate(() => {
-      const btns = document.querySelectorAll('.nav-btn');
-      btns.forEach((btn: any) => { if (btn.textContent?.includes('TRACES')) btn.click(); });
-    });
-    await sleep(2000);
-
-    // ========== SCENE 4: Move task from Backlog to Ready ==========
-    console.log('Scene 4: Move task from Backlog to Ready');
+    // ========== SCENE 3: Move task from Backlog to Ready ==========
+    console.log('Scene 3: Move task from Backlog to Ready');
     await page.evaluate(() => {
       const btns = document.querySelectorAll('.nav-btn');
       btns.forEach((btn: any) => { if (btn.textContent?.includes('TASKS')) btn.click(); });
@@ -242,8 +250,8 @@ async function recordDemo() {
       await sleep(1500);
       await page.evaluate(() => document.getElementById('cmd-overlay')?.remove());
 
-      // ========== SCENE 5: Agent picks up task from Ready ==========
-      console.log('Scene 5: Agent picks up task from Ready');
+      // ========== SCENE 4: Agent picks up task from Ready ==========
+      console.log('Scene 4: Agent picks up task from Ready');
       await page.evaluate(() => {
         const overlay = document.createElement('div');
         overlay.id = 'cmd-overlay';
@@ -296,8 +304,59 @@ async function recordDemo() {
       await sleep(1500);
       await page.evaluate(() => document.getElementById('cmd-overlay')?.remove());
 
-      // ========== SCENE 6: Show Traces - Agent work in progress ==========
-      console.log('Scene 6: Traces - Agent work live');
+      // Add multiple trace events while still on Tasks view (build up logs)
+      await fetch(`${API_URL}/tasks/${backlogTask.id}/traces`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentName: 'engineering',
+          eventType: 'llm_call',
+          content: 'Analyzing payment integration requirements',
+          tokens: { input: 2100, output: 1580 },
+          latencyMs: 2800
+        })
+      });
+      await sleep(800);
+
+      await fetch(`${API_URL}/tasks/${backlogTask.id}/traces`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentName: 'engineering',
+          eventType: 'tool_use',
+          content: 'Reading Stripe API documentation',
+          latencyMs: 450
+        })
+      });
+      await sleep(600);
+
+      await fetch(`${API_URL}/tasks/${backlogTask.id}/traces`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentName: 'engineering',
+          eventType: 'llm_call',
+          content: 'Designing payment flow architecture',
+          tokens: { input: 1850, output: 2100 },
+          latencyMs: 3500
+        })
+      });
+      await sleep(600);
+
+      await fetch(`${API_URL}/tasks/${backlogTask.id}/traces`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentName: 'engineering',
+          eventType: 'tool_use',
+          content: 'Creating Stripe integration module',
+          latencyMs: 650
+        })
+      });
+      await sleep(500);
+
+      // ========== SCENE 5: Show Traces - Agent work in progress ==========
+      console.log('Scene 5: Traces - Agent work live');
       await page.evaluate(() => {
         const title = document.createElement('div');
         title.id = 'demo-title';
@@ -315,16 +374,25 @@ async function recordDemo() {
       });
       await sleep(1500);
 
-      // Add more trace events in real-time
+      // Expand the payment task group to show all traces
+      await page.evaluate(() => {
+        const groups = document.querySelectorAll('.trace-group-header');
+        // Find the one with "payment" in it
+        groups.forEach((g: any) => {
+          if (g.textContent?.toLowerCase().includes('payment')) g.click();
+        });
+      });
+      await sleep(3000);
+
+      // Add one more trace event in real-time
       await fetch(`${API_URL}/tasks/${backlogTask.id}/traces`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           agentName: 'engineering',
-          eventType: 'llm_call',
-          content: 'Analyzing payment integration requirements',
-          tokens: { input: 2100, output: 1580 },
-          latencyMs: 2800
+          eventType: 'tool_use',
+          content: 'Writing unit tests for payment flow',
+          latencyMs: 890
         })
       });
       await page.reload({ waitUntil: 'networkidle0' });
@@ -334,45 +402,19 @@ async function recordDemo() {
       });
       await sleep(1000);
 
-      // Expand the task group to show traces
+      // Re-expand the payment task group
       await page.evaluate(() => {
         const groups = document.querySelectorAll('.trace-group-header');
-        // Find the one with "payment" in it
         groups.forEach((g: any) => {
           if (g.textContent?.toLowerCase().includes('payment')) g.click();
         });
-        // Fallback: click first group
-        if (groups.length > 0) (groups[0] as HTMLElement).click();
       });
-      await sleep(1500);
-
-      // Add tool_use trace
-      await fetch(`${API_URL}/tasks/${backlogTask.id}/traces`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          agentName: 'engineering',
-          eventType: 'tool_use',
-          content: 'Creating Stripe integration module',
-          latencyMs: 650
-        })
-      });
-      await page.reload({ waitUntil: 'networkidle0' });
-      await page.evaluate(() => {
-        const btns = document.querySelectorAll('.nav-btn');
-        btns.forEach((btn: any) => { if (btn.textContent?.includes('TRACES')) btn.click(); });
-      });
-      await sleep(800);
-      await page.evaluate(() => {
-        const groups = document.querySelectorAll('.trace-group-header');
-        if (groups.length > 0) (groups[0] as HTMLElement).click();
-      });
-      await sleep(2000);
+      await sleep(2500);
       await page.evaluate(() => document.getElementById('demo-title')?.remove());
     }
 
-    // ========== SCENE 7: Slack conversation ==========
-    console.log('Scene 7: Slack conversation');
+    // ========== SCENE 6: Slack conversation ==========
+    console.log('Scene 6: Slack conversation');
     await page.evaluate(() => {
       const btns = document.querySelectorAll('.nav-btn');
       btns.forEach((btn: any) => { if (btn.textContent?.includes('TASKS')) btn.click(); });
@@ -450,28 +492,8 @@ async function recordDemo() {
     await page.reload({ waitUntil: 'networkidle0' });
     await sleep(1000);
 
-    // ========== SCENE 8: Agents Registry ==========
-    console.log('Scene 8: Agent Registry');
-    await page.evaluate(() => {
-      const title = document.createElement('div');
-      title.id = 'demo-title';
-      title.innerHTML = `<div style="
-        position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-        background: #2563eb; color: white; padding: 10px 24px; border-radius: 8px;
-        font-family: -apple-system, sans-serif; font-size: 16px; font-weight: 600;
-        z-index: 10000;
-      ">Agent Registry</div>`;
-      document.body.appendChild(title);
-    });
-    await page.evaluate(() => {
-      const btns = document.querySelectorAll('.nav-btn');
-      btns.forEach((btn: any) => { if (btn.textContent?.includes('AGENTS')) btn.click(); });
-    });
-    await sleep(2500);
-    await page.evaluate(() => document.getElementById('demo-title')?.remove());
-
-    // ========== SCENE 9: Final CTA - Light Theme ==========
-    console.log('Scene 9: GitHub CTA');
+    // ========== SCENE 7: Final CTA - Light Theme ==========
+    console.log('Scene 7: GitHub CTA');
     await page.evaluate(() => {
       const cta = document.createElement('div');
       cta.innerHTML = `<div style="
