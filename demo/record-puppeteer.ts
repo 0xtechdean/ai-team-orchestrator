@@ -177,18 +177,11 @@ async function recordDemo() {
     });
     await sleep(2000);
 
-    // Close the agent popup/modal
+    // Close the agent popup/modal by removing active class
     await page.evaluate(() => {
-      // Try clicking close button first
-      const closeBtn = document.querySelector('.modal-close, .close-btn, [aria-label="Close"]');
-      if (closeBtn) (closeBtn as HTMLElement).click();
-      // Or click the modal overlay/backdrop to close
-      const overlay = document.querySelector('.modal-overlay, .modal-backdrop, .overlay');
-      if (overlay) (overlay as HTMLElement).click();
+      const modal = document.getElementById('edit-agent-modal');
+      if (modal) modal.classList.remove('active');
     });
-    await sleep(500);
-    // Press Escape as fallback
-    await page.keyboard.press('Escape');
     await sleep(500);
 
     await page.evaluate(() => document.getElementById('demo-title')?.remove());
