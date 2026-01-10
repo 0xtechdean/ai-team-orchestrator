@@ -1,7 +1,7 @@
 {
-  "name": "ai-team-orchestrator",
+  "name": "agentic",
   "version": "1.0.0",
-  "description": "Autonomous AI agent team that builds software projects with self-improvement capabilities",
+  "description": "Self-improving multi-agent system for collaborative AI teams",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",

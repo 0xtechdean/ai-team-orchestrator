@@ -1,4 +1,4 @@
-# AI Team Orchestrator
+# Agentic
 
 A self-improving multi-agent system that coordinates AI agents to work on tasks collaboratively. Agents can create new agents, define reusable skills, and evolve based on performance metrics.
 
@@ -20,7 +20,7 @@ A self-improving multi-agent system that coordinates AI agents to work on tasks 
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     AI Team Orchestrator                     │
+│                          Agentic                             │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
@@ -64,8 +64,8 @@ A self-improving multi-agent system that coordinates AI agents to work on tasks 
 
 ```bash
 # Clone the repository
-git clone https://github.com/0xtechdean/ai-team-orchestrator.git
-cd ai-team-orchestrator
+git clone https://github.com/0xtechdean/agentic.git
+cd agentic
 
 # Install dependencies
 npm install

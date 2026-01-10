@@ -1,5 +1,5 @@
 /**
- * AI Team Orchestrator - Main Entry Point
+ * Agentic - Main Entry Point
  * Express server with API routes for task management and agent coordination
  */
 
@@ -254,7 +254,7 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
   console.log(`
 ╔══════════════════════════════════════════════════════╗
-║           AI Team Orchestrator                       ║
+║           Agentic                                    ║
 ║                                                      ║
 ║   Server running on http://localhost:${PORT}            ║
 ║   Dashboard: http://localhost:${PORT}                   ║

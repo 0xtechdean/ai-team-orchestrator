@@ -115,7 +115,7 @@ async function recordDemo() {
         <path d="M23 23L20 19" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round"/>
         <circle cx="16" cy="16" r="2" fill="white"/>
       </svg>
-      AI Team Orchestrator
+      Agentic
     </div>`;
     document.body.appendChild(title);
   });
@@ -455,8 +455,8 @@ I'll keep you updated on progress here!`);
             <path d="M23 23L20 19" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round"/>
             <circle cx="16" cy="16" r="2" fill="white"/>
           </svg>
-          <div style="font-size:28px;font-weight:700;color:#0f172a;margin-bottom:8px;font-family:-apple-system,sans-serif;">AI Team Orchestrator</div>
-          <div style="font-size:15px;color:#3b82f6;margin-bottom:16px;font-family:-apple-system,sans-serif;">github.com/0xtechdean/ai-team-orchestrator</div>
+          <div style="font-size:28px;font-weight:700;color:#0f172a;margin-bottom:8px;font-family:-apple-system,sans-serif;">Agentic</div>
+          <div style="font-size:15px;color:#3b82f6;margin-bottom:16px;font-family:-apple-system,sans-serif;">github.com/0xtechdean/agentic</div>
           <div style="font-size:13px;color:#64748b;font-family:-apple-system,sans-serif;">MIT Licensed • TypeScript • Real Slack Integration</div>
         </div>
       </div>`;
