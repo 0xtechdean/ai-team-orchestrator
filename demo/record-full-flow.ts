@@ -102,8 +102,20 @@ async function recordDemo() {
   await page.evaluate(() => {
     const title = document.createElement('div');
     title.id = 'demo-title';
-    title.innerHTML = `<div style="position:fixed;top:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:white;padding:8px 18px;border-radius:8px;font-family:-apple-system,sans-serif;font-size:15px;font-weight:600;z-index:10000;">
-      🤖 AI Team Orchestrator
+    title.innerHTML = `<div style="position:fixed;top:12px;left:50%;transform:translateX(-50%);background:#ffffff;border:1px solid #e2e8f0;color:#0f172a;padding:10px 20px;border-radius:10px;font-family:-apple-system,sans-serif;font-size:14px;font-weight:600;z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,0.08);display:flex;align-items:center;gap:8px;">
+      <svg viewBox="0 0 32 32" style="width:20px;height:20px;">
+        <circle cx="16" cy="16" r="5" fill="#3b82f6"/>
+        <circle cx="6" cy="10" r="3" fill="#0891b2"/>
+        <circle cx="26" cy="10" r="3" fill="#0891b2"/>
+        <circle cx="6" cy="24" r="3" fill="#10b981"/>
+        <circle cx="26" cy="24" r="3" fill="#10b981"/>
+        <path d="M9 11L12 14" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M23 11L20 14" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M9 23L12 19" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M23 23L20 19" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="16" cy="16" r="2" fill="white"/>
+      </svg>
+      AI Team Orchestrator
     </div>`;
     document.body.appendChild(title);
   });
@@ -307,39 +319,39 @@ I'll keep you updated on progress here!`);
     // Scene 4: Show Slack conversation
     console.log('Scene 4: Slack conversation');
 
-    // Add Slack panel
+    // Add Slack panel (light theme)
     await page.evaluate((tid: string) => {
       // Remove old indicator
       document.getElementById('action-indicator')?.remove();
 
       const slack = document.createElement('div');
       slack.id = 'slack-panel';
-      slack.innerHTML = `<div style="position:fixed;top:50px;right:15px;width:400px;background:#1a1d21;border-radius:8px;font-family:-apple-system,sans-serif;color:#fff;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:10000;overflow:hidden;">
-        <div style="background:#350d36;padding:10px 14px;display:flex;align-items:center;gap:8px;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/></svg>
-          <span style="font-weight:600;font-size:14px;">#task-backend-${tid}</span>
-          <span style="margin-left:auto;background:#2eb67d;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;">LIVE</span>
+      slack.innerHTML = `<div style="position:fixed;top:50px;right:15px;width:400px;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;font-family:-apple-system,sans-serif;color:#0f172a;box-shadow:0 10px 40px rgba(0,0,0,0.12);z-index:10000;overflow:hidden;">
+        <div style="background:#f8fafc;padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #e2e8f0;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#E01E5A"><path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/></svg>
+          <span style="font-weight:600;font-size:14px;color:#0f172a;">#task-backend-${tid}</span>
+          <span style="margin-left:auto;background:#10b981;padding:3px 8px;border-radius:6px;font-size:10px;font-weight:600;color:white;">LIVE</span>
         </div>
-        <div id="slack-msgs" style="padding:12px;min-height:280px;max-height:350px;overflow-y:auto;"></div>
-        <div style="padding:10px 12px;border-top:1px solid #333;background:#222;">
-          <div style="background:#333;border-radius:4px;padding:8px 10px;color:#666;font-size:13px;">Message #task-backend-${tid}</div>
+        <div id="slack-msgs" style="padding:14px;min-height:280px;max-height:350px;overflow-y:auto;background:#ffffff;"></div>
+        <div style="padding:12px 14px;border-top:1px solid #e2e8f0;background:#f8fafc;">
+          <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;color:#94a3b8;font-size:13px;">Message #task-backend-${tid}</div>
         </div>
       </div>`;
       document.body.appendChild(slack);
     }, taskId);
 
-    // Helper to add messages
+    // Helper to add messages (light theme)
     const addSlackMsg = async (user: string, text: string, isBot: boolean) => {
       await page.evaluate((u: string, t: string, bot: boolean) => {
         const msgs = document.getElementById('slack-msgs');
         if (msgs) {
           const msg = document.createElement('div');
-          msg.style.cssText = 'display:flex;margin-bottom:12px;';
+          msg.style.cssText = 'display:flex;margin-bottom:14px;';
           msg.innerHTML = `
-            <div style="width:32px;height:32px;background:${bot ? '#4a154b' : '#2eb67d'};border-radius:4px;display:flex;align-items:center;justify-content:center;margin-right:8px;flex-shrink:0;font-size:14px;">${bot ? '🤖' : '👤'}</div>
+            <div style="width:36px;height:36px;background:${bot ? '#eff6ff' : '#ecfdf5'};border:1px solid ${bot ? '#bfdbfe' : '#a7f3d0'};border-radius:8px;display:flex;align-items:center;justify-content:center;margin-right:10px;flex-shrink:0;font-size:16px;">${bot ? '🤖' : '👤'}</div>
             <div style="flex:1;">
-              <div style="font-weight:600;color:${bot ? '#1d9bd1' : '#fff'};font-size:13px;">${u} <span style="color:#616061;font-weight:400;font-size:11px;">now</span></div>
-              <div style="color:#d1d2d3;font-size:13px;margin-top:2px;line-height:1.4;">${t}</div>
+              <div style="font-weight:600;color:${bot ? '#3b82f6' : '#0f172a'};font-size:13px;">${u} <span style="color:#94a3b8;font-weight:400;font-size:11px;">now</span></div>
+              <div style="color:#475569;font-size:13px;margin-top:3px;line-height:1.5;">${t}</div>
             </div>
           `;
           msgs.appendChild(msg);
@@ -423,18 +435,29 @@ I'll keep you updated on progress here!`);
     }, taskId);
     await sleep(2500);
 
-    // Scene 5: Final CTA
+    // Scene 5: Final CTA (light theme)
     console.log('Scene 5: GitHub CTA');
     await page.evaluate(() => {
       document.querySelectorAll('[style*="position:fixed"]').forEach(el => el.remove());
 
       const cta = document.createElement('div');
-      cta.innerHTML = `<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;z-index:10000;">
-        <div style="background:linear-gradient(135deg,#1e1e1e 0%,#2d2d2d 100%);border-radius:16px;padding:40px 56px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.4);">
-          <div style="font-size:56px;margin-bottom:16px;">🤖</div>
-          <div style="font-size:26px;font-weight:700;color:#fff;margin-bottom:10px;font-family:-apple-system,sans-serif;">AI Team Orchestrator</div>
-          <div style="font-size:16px;color:#60a5fa;margin-bottom:16px;font-family:-apple-system,sans-serif;">github.com/0xtechdean/ai-team-orchestrator</div>
-          <div style="font-size:13px;color:#888;font-family:-apple-system,sans-serif;">MIT Licensed • TypeScript • Real Slack Integration</div>
+      cta.innerHTML = `<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.5);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:10000;">
+        <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:20px;padding:48px 64px;text-align:center;box-shadow:0 25px 50px -12px rgba(0,0,0,0.15);">
+          <svg viewBox="0 0 32 32" style="width:48px;height:48px;margin-bottom:16px;">
+            <circle cx="16" cy="16" r="5" fill="#3b82f6"/>
+            <circle cx="6" cy="10" r="3" fill="#0891b2"/>
+            <circle cx="26" cy="10" r="3" fill="#0891b2"/>
+            <circle cx="6" cy="24" r="3" fill="#10b981"/>
+            <circle cx="26" cy="24" r="3" fill="#10b981"/>
+            <path d="M9 11L12 14" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M23 11L20 14" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M9 23L12 19" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M23 23L20 19" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round"/>
+            <circle cx="16" cy="16" r="2" fill="white"/>
+          </svg>
+          <div style="font-size:28px;font-weight:700;color:#0f172a;margin-bottom:8px;font-family:-apple-system,sans-serif;">AI Team Orchestrator</div>
+          <div style="font-size:15px;color:#3b82f6;margin-bottom:16px;font-family:-apple-system,sans-serif;">github.com/0xtechdean/ai-team-orchestrator</div>
+          <div style="font-size:13px;color:#64748b;font-family:-apple-system,sans-serif;">MIT Licensed • TypeScript • Real Slack Integration</div>
         </div>
       </div>`;
       document.body.appendChild(cta);
