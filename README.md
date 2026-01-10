@@ -1,5 +1,10 @@
 # Agentic
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![GitHub stars](https://img.shields.io/github/stars/0xtechdean/agentic?style=social)](https://github.com/0xtechdean/agentic)
+[![GitHub forks](https://img.shields.io/github/forks/0xtechdean/agentic?style=social)](https://github.com/0xtechdean/agentic/fork)
+
 A self-improving multi-agent system that coordinates AI agents to work on tasks collaboratively. Agents can create new agents, define reusable skills, and evolve based on performance metrics.
 
 ![Demo](demo/demo.gif)
