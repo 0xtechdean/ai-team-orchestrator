@@ -11,7 +11,7 @@ A self-improving multi-agent system that coordinates AI agents to work on tasks 
 
 *Demo: Task moves to Ready → Agent picks it up → Creates Slack channel → Real-time conversation → Task completed*
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/from?repoUrl=https://github.com/0xtechdean/agentic)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template?template=https://github.com/0xtechdean/agentic)
 
 ## Features
 
