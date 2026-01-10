@@ -5,7 +5,7 @@
  */
 
 import Redis from 'ioredis';
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
 
 export interface AgentDefinition {
@@ -381,6 +381,29 @@ class AgentRegistry {
 
     console.log(`[AgentRegistry] Updated agent: ${id} (v${updated.version}) by ${updatedBy}`);
     return updated;
+  }
+
+  async deleteAgent(id: string): Promise<boolean> {
+    const existing = await this.getAgent(id);
+    if (!existing) return false;
+
+    if (this.redis) {
+      await this.redis.del(this.agentKey(id));
+    }
+    this.memAgents.delete(id);
+
+    // Delete the agent file
+    const agentFile = join(this.repoPath, '.claude', 'agents', `${id}.md`);
+    try {
+      if (existsSync(agentFile)) {
+        unlinkSync(agentFile);
+      }
+    } catch (err) {
+      console.error(`[AgentRegistry] Failed to delete agent file: ${id}`, err);
+    }
+
+    console.log(`[AgentRegistry] Deleted agent: ${id}`);
+    return true;
   }
 
   private async writeAgentToFile(agent: AgentDefinition): Promise<void> {

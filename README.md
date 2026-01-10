@@ -16,12 +16,16 @@ A self-improving multi-agent system that coordinates AI agents to work on tasks 
 ## Features
 
 - **Multi-Agent Orchestration**: Coordinate multiple AI agents with different roles and capabilities
+- **Visual Dashboard**: Clean, light-themed UI with Kanban board, Gantt chart, and activity monitoring
+- **Gantt Chart Timeline**: Visualize project progress with task bars, priority sorting, and time ranges
+- **Activity Tracing**: Monitor agent activity organized by task with token usage and timing
+- **Agent Management**: Create, edit, and delete agents through the UI with real-time updates
 - **Self-Improvement System**: Agents can create new agents, skills, and evolve based on performance
 - **Task Management**: Kanban-style task board with projects, priorities, and ownership
 - **Shared Memory**: Agents share learnings via Mem0 for collective intelligence
 - **Role-Based Permissions**: Manager, Specialist, and Support roles with different capabilities
-- **Pattern Recognition**: Automatically identifies recurring patterns and suggests automations
-- **Slack Integration**: Creates dedicated channels for each task, enabling real-time communication with agents
+- **Release Stuck Tasks**: One-click release for tasks stuck in progress
+- **Slack Integration**: Creates dedicated channels for each task, enabling real-time communication
 
 ## Architecture
 
@@ -34,9 +38,10 @@ A self-improving multi-agent system that coordinates AI agents to work on tasks 
 │  │   Manager   │  │  Specialist │  │   Support   │         │
 │  │   Agents    │  │   Agents    │  │   Agents    │         │
 │  │             │  │             │  │             │         │
-│  │ - PM        │  │ - Backend   │  │ - Docs      │         │
-│  │ - Eng Lead  │  │ - Frontend  │  │ - QA        │         │
-│  │             │  │ - DevOps    │  │             │         │
+│  │ - PM        │  │ - Engineer  │  │ - Data      │         │
+│  │             │  │ - Marketing │  │ - Researcher│         │
+│  │             │  │ - Growth    │  │             │         │
+│  │             │  │ - QA        │  │             │         │
 │  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘         │
 │         │                │                │                 │
 │         └────────────────┼────────────────┘                 │
@@ -116,23 +121,27 @@ Open http://localhost:3000 to access the Kanban dashboard.
 Create agent definitions in `.claude/agents/` as Markdown files:
 
 ```markdown
-<!-- .claude/agents/backend.md -->
-# Backend Engineer
+<!-- .claude/agents/engineering.md -->
+# Engineering Agent
 
-You are a backend specialist focused on API development and database design.
+You are a full-stack engineering agent capable of working across the entire codebase.
+
+## Role
+Specialist
 
 ## Capabilities
-- API endpoint implementation
-- Database schema design
-- Performance optimization
+- Backend: APIs, databases, server logic
+- Frontend: React, UI components, styling
+- DevOps: CI/CD, deployment, infrastructure
+- Architecture: System design, code reviews
 
 ## Tools
 - Read, Write, Grep, Glob, Bash
 
 ## Guidelines
-- Follow REST conventions
-- Write comprehensive tests
-- Document all endpoints
+- Follow existing code patterns
+- Write tests for new features
+- Document significant changes
 ```
 
 ## API Reference
@@ -161,6 +170,8 @@ You are a backend specialist focused on API development and database design.
 | GET | `/api/agents` | List all agents |
 | GET | `/api/agents/:id` | Get agent details |
 | POST | `/api/agents` | Create a new agent |
+| PATCH | `/api/agents/:id` | Update agent details |
+| DELETE | `/api/agents/:id` | Delete an agent |
 | GET | `/api/agents/:id/performance` | Get agent metrics |
 
 ### Orchestration

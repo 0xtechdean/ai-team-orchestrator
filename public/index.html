@@ -3,10 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Agentic</title>
+  <title>Agentic - Multi-Agent Dashboard</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%232196f3' width='100' height='100' rx='12'/%3E%3Ctext x='50' y='68' font-family='monospace' font-size='55' font-weight='bold' fill='white' text-anchor='middle'%3EA%3C/text%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * {
       margin: 0;
@@ -16,140 +17,158 @@
 
     :root {
       --bg-primary: #ffffff;
-      --bg-secondary: #f8fafc;
+      --bg-secondary: #f8f9fa;
       --bg-card: #ffffff;
-      --bg-elevated: #f1f5f9;
-      --border-color: #e2e8f0;
-      --border-hover: #cbd5e1;
-      --text-primary: #0f172a;
-      --text-secondary: #475569;
-      --text-muted: #94a3b8;
-      --accent-primary: #3b82f6;
-      --accent-secondary: #0891b2;
-      --accent-success: #10b981;
-      --accent-warning: #f59e0b;
-      --accent-danger: #ef4444;
-      --glow-primary: rgba(59, 130, 246, 0.08);
-      --glow-cyan: rgba(8, 145, 178, 0.08);
-      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      --bg-elevated: #f1f3f4;
+      --border-color: #e0e0e0;
+      --border-hover: #bdbdbd;
+      --text-primary: #1a1a1a;
+      --text-secondary: #424242;
+      --text-muted: #9e9e9e;
+      --text-dark: #0d0d0d;
+      --accent-green: #00c853;
+      --accent-cyan: #00bcd4;
+      --accent-yellow: #ffc107;
+      --accent-magenta: #e040fb;
+      --accent-red: #f44336;
+      --accent-blue: #2196f3;
+      --glow-green: rgba(0, 200, 83, 0.15);
+      --glow-blue: rgba(33, 150, 243, 0.15);
     }
 
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: 'JetBrains Mono', 'SF Mono', 'Monaco', monospace;
       background: var(--bg-secondary);
       color: var(--text-primary);
       min-height: 100vh;
-      overflow-x: hidden;
+      font-size: 13px;
+      line-height: 1.6;
     }
 
-    /* Subtle top gradient */
-    body::before {
-      content: '';
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 300px;
-      background: linear-gradient(180deg, rgba(59, 130, 246, 0.03) 0%, transparent 100%);
-      pointer-events: none;
-      z-index: 0;
+    /* Selection */
+    ::selection {
+      background: var(--accent-blue);
+      color: white;
     }
 
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+    ::-webkit-scrollbar-thumb { background: var(--border-color); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    /* ============ HEADER ============ */
     .header {
-      position: relative;
-      z-index: 10;
-      background: var(--bg-primary);
+      background: var(--bg-secondary);
       border-bottom: 1px solid var(--border-color);
-      padding: 1rem 2rem;
+      padding: 0.75rem 1.5rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      box-shadow: var(--shadow-sm);
     }
 
     .logo {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: 1rem;
     }
 
-    .logo-icon {
-      width: 40px;
-      height: 40px;
-      background: var(--bg-primary);
-      border: 1px solid var(--border-color);
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 6px;
+    .logo-ascii {
+      color: var(--accent-blue);
+      font-size: 10px;
+      line-height: 1.2;
+      white-space: pre;
     }
 
-    .logo-icon svg {
-      width: 100%;
-      height: 100%;
+    .logo-text {
+      border-left: 1px solid var(--border-color);
+      padding-left: 1rem;
     }
 
     .logo-text h1 {
-      font-size: 1.125rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-dark);
+      letter-spacing: 0.1em;
     }
 
     .logo-text p {
-      font-size: 0.75rem;
+      font-size: 11px;
       color: var(--text-muted);
+    }
+
+    .nav {
+      display: flex;
+      gap: 0.25rem;
+    }
+
+    .nav-btn {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 0.5rem 1rem;
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .nav-btn:hover {
+      border-color: var(--accent-blue);
+      color: var(--accent-blue);
+    }
+
+    .nav-btn.active {
+      background: var(--accent-blue);
+      color: white;
+      border-color: var(--accent-blue);
     }
 
     .stats {
       display: flex;
+      gap: 1.5rem;
+      font-size: 12px;
+    }
+
+    .stat {
+      display: flex;
+      align-items: center;
       gap: 0.5rem;
     }
 
-    .stat-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      padding: 0.75rem 1.25rem;
-      min-width: 100px;
-      transition: all 0.2s ease;
+    .stat-label { color: var(--text-muted); }
+    .stat-value { color: var(--accent-blue); font-weight: 600; }
+
+    .release-btn {
+      background: var(--accent-yellow);
+      border: 1px solid var(--accent-yellow);
+      color: #000;
+      padding: 0.375rem 0.75rem;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      margin-left: 1rem;
     }
 
-    .stat-card:hover {
-      border-color: var(--border-hover);
-      transform: translateY(-2px);
+    .release-btn:hover {
+      background: #ffb300;
+      border-color: #ffb300;
     }
 
-    .stat-value {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--accent-primary);
-    }
-
-    .stat-label {
-      font-size: 0.6875rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
+    /* ============ MAIN LAYOUT ============ */
     .main {
-      position: relative;
-      z-index: 1;
       display: flex;
-      height: calc(100vh - 73px);
+      height: calc(100vh - 52px);
     }
 
     .sidebar {
-      width: 280px;
-      background: var(--bg-primary);
+      width: 240px;
+      background: var(--bg-secondary);
       border-right: 1px solid var(--border-color);
-      padding: 1.5rem;
+      padding: 1rem;
       overflow-y: auto;
-      display: flex;
-      flex-direction: column;
     }
 
     .sidebar-section {
@@ -157,398 +176,722 @@
     }
 
     .sidebar-title {
-      font-size: 0.6875rem;
+      font-size: 10px;
       font-weight: 600;
       color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: 0.1em;
+      letter-spacing: 0.15em;
       margin-bottom: 0.75rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border-color);
     }
 
     .agent-list {
       list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
     }
 
     .agent-item {
-      padding: 0.75rem;
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 10px;
+      padding: 0.5rem;
+      margin-bottom: 0.25rem;
+      border: 1px solid transparent;
       cursor: pointer;
-      transition: all 0.2s ease;
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-
-    .agent-item:hover {
-      border-color: var(--accent-primary);
-      background: var(--bg-elevated);
-      transform: translateX(4px);
-    }
-
-    .agent-avatar {
-      width: 38px;
-      height: 38px;
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      overflow: hidden;
-      background: var(--bg-elevated);
-      border: 1px solid var(--border-color);
-    }
-
-    .agent-avatar img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .agent-avatar.manager {
-      border-color: #a5b4fc;
-      background: #eef2ff;
-    }
-    .agent-avatar.specialist {
-      border-color: #93c5fd;
-      background: #eff6ff;
-    }
-    .agent-avatar.support {
-      border-color: #6ee7b7;
-      background: #ecfdf5;
-    }
-
-    .agent-status {
-      position: absolute;
-      bottom: -2px;
-      right: -2px;
-      width: 12px;
-      height: 12px;
-      background: var(--accent-success);
-      border: 2px solid var(--bg-card);
-      border-radius: 50%;
-    }
-
-    .agent-info h3 {
-      font-size: 0.875rem;
-      font-weight: 600;
-      margin-bottom: 0.125rem;
-    }
-
-    .agent-info p {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      text-transform: capitalize;
-    }
-
-    .run-agent-panel {
-      margin-top: auto;
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      padding: 1rem;
-    }
-
-    .run-agent-panel h3 {
-      font-size: 0.8125rem;
-      font-weight: 600;
-      margin-bottom: 0.75rem;
+      transition: all 0.15s ease;
       display: flex;
       align-items: center;
       gap: 0.5rem;
     }
 
-    .run-agent-form {
-      display: flex;
-      flex-direction: column;
-      gap: 0.625rem;
+    .agent-item:hover {
+      border-color: var(--border-color);
+      background: var(--bg-card);
     }
 
-    .run-agent-form select,
-    .run-agent-form input {
-      padding: 0.625rem 0.75rem;
-      background: var(--bg-primary);
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      color: var(--text-primary);
-      font-size: 0.8125rem;
-      font-family: inherit;
-      transition: all 0.2s ease;
+    .agent-status {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      box-shadow: 0 0 6px var(--accent-green);
     }
 
-    .run-agent-form select:focus,
-    .run-agent-form input:focus {
-      outline: none;
-      border-color: var(--accent-primary);
-      box-shadow: 0 0 0 3px var(--glow-primary);
+    .agent-name {
+      color: var(--text-dark);
+      font-size: 12px;
     }
 
-    .run-agent-form button {
-      padding: 0.625rem 1rem;
-      background: var(--accent-primary);
-      border: none;
-      border-radius: 8px;
-      color: white;
-      font-size: 0.8125rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
+    .agent-role {
+      color: var(--text-muted);
+      font-size: 10px;
+      margin-left: auto;
     }
 
-    .run-agent-form button:hover {
-      background: #2563eb;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-    }
-
-    .run-agent-form button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .kanban {
+    /* ============ CONTENT AREA ============ */
+    .content {
       flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+    }
+
+    /* ============ VIEW: TASKS (KANBAN) ============ */
+    .kanban {
       display: flex;
       gap: 1rem;
-      padding: 1.5rem;
-      overflow-x: auto;
+      height: 100%;
     }
 
     .column {
-      min-width: 300px;
+      flex: 1;
+      min-width: 280px;
       max-width: 320px;
-      background: var(--bg-primary);
+      background: var(--bg-secondary);
       border: 1px solid var(--border-color);
-      border-radius: 12px;
       display: flex;
       flex-direction: column;
-      transition: all 0.2s ease;
-      box-shadow: var(--shadow-sm);
-    }
-
-    .column:hover {
-      box-shadow: var(--shadow-md);
     }
 
     .column-header {
-      padding: 1rem 1.25rem;
+      padding: 0.75rem 1rem;
       border-bottom: 1px solid var(--border-color);
       display: flex;
-      align-items: center;
       justify-content: space-between;
+      align-items: center;
     }
 
-    .column-header h3 {
-      font-size: 0.8125rem;
-      font-weight: 600;
+    .column-title {
       display: flex;
       align-items: center;
-      gap: 0.625rem;
+      gap: 0.5rem;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
     }
+
+    .column-title .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .column-title .dot.backlog { background: var(--text-muted); }
+    .column-title .dot.ready { background: var(--accent-cyan); box-shadow: 0 0 8px var(--accent-cyan); }
+    .column-title .dot.in_progress { background: var(--accent-yellow); box-shadow: 0 0 8px var(--accent-yellow); }
+    .column-title .dot.done { background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); }
 
     .column-count {
-      background: var(--bg-elevated);
-      padding: 0.25rem 0.625rem;
-      border-radius: 20px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: var(--text-secondary);
+      background: var(--bg-card);
+      padding: 0.125rem 0.5rem;
+      font-size: 11px;
+      color: var(--text-muted);
     }
-
-    .status-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      box-shadow: 0 0 8px currentColor;
-    }
-
-    .status-dot.backlog { color: #64748b; background: #64748b; }
-    .status-dot.ready { color: var(--accent-secondary); background: var(--accent-secondary); }
-    .status-dot.in_progress { color: var(--accent-warning); background: var(--accent-warning); }
-    .status-dot.done { color: var(--accent-success); background: var(--accent-success); }
 
     .column-body {
       flex: 1;
-      padding: 0.75rem;
+      padding: 0.5rem;
       overflow-y: auto;
-      min-height: 200px;
     }
 
     .task-card {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
-      border-radius: 10px;
-      padding: 1rem;
-      margin-bottom: 0.625rem;
-      cursor: grab;
-      transition: all 0.2s ease;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .task-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 4px;
-      height: 100%;
-      background: var(--accent-primary);
-      opacity: 0;
-      transition: opacity 0.2s ease;
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
     }
 
     .task-card:hover {
-      border-color: var(--border-hover);
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-md);
-    }
-
-    .task-card:hover::before {
-      opacity: 1;
-    }
-
-    .task-card.dragging {
-      opacity: 0.5;
-      transform: rotate(2deg);
+      border-color: var(--accent-blue);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
 
     .task-priority {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.25rem;
-      padding: 0.25rem 0.5rem;
-      border-radius: 6px;
-      font-size: 0.625rem;
-      font-weight: 700;
-      margin-bottom: 0.625rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+      font-size: 10px;
+      padding: 0.125rem 0.375rem;
+      margin-bottom: 0.5rem;
+      display: inline-block;
     }
 
-    .priority-P0 {
-      background: #fef2f2;
-      color: #dc2626;
-      border: 1px solid #fecaca;
-    }
-    .priority-P1 {
-      background: #fffbeb;
-      color: #d97706;
-      border: 1px solid #fde68a;
-    }
-    .priority-P2 {
-      background: #eff6ff;
-      color: #2563eb;
-      border: 1px solid #bfdbfe;
-    }
-    .priority-P3 {
-      background: #f8fafc;
-      color: #64748b;
-      border: 1px solid #e2e8f0;
-    }
+    .priority-P0 { background: var(--accent-red); color: #000; }
+    .priority-P1 { background: var(--accent-yellow); color: #000; }
+    .priority-P2 { background: var(--accent-cyan); color: #000; }
+    .priority-P3 { background: var(--text-muted); color: #fff; }
 
     .task-title {
-      font-size: 0.875rem;
-      font-weight: 600;
+      color: var(--text-dark);
+      font-size: 12px;
       margin-bottom: 0.5rem;
       line-height: 1.4;
-      color: var(--text-primary);
     }
 
-    .task-description {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      margin-bottom: 0.75rem;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      line-height: 1.5;
-    }
-
-    .task-footer {
+    .task-meta {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      padding-top: 0.75rem;
-      border-top: 1px solid var(--border-color);
-    }
-
-    .task-owner {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-    }
-
-    .owner-avatar {
-      width: 24px;
-      height: 24px;
-      border-radius: 6px;
-      background: var(--bg-elevated);
-      border: 1px solid var(--border-color);
-      object-fit: cover;
-    }
-
-    .task-actions {
-      display: flex;
-      gap: 0.25rem;
-      opacity: 0;
-      transition: opacity 0.2s ease;
-    }
-
-    .task-card:hover .task-actions {
-      opacity: 1;
-    }
-
-    .task-action-btn {
-      background: var(--bg-elevated);
-      border: 1px solid var(--border-color);
+      font-size: 10px;
       color: var(--text-muted);
-      cursor: pointer;
-      padding: 0.375rem;
-      border-radius: 6px;
-      transition: all 0.2s ease;
-      font-size: 0.75rem;
     }
 
-    .task-action-btn:hover {
-      color: var(--accent-danger);
-      border-color: var(--accent-danger);
-      background: rgba(239, 68, 68, 0.1);
-    }
+    .task-owner { color: var(--accent-blue); }
 
     .add-task-btn {
       width: 100%;
-      padding: 0.75rem;
-      background: transparent;
-      border: 2px dashed var(--border-color);
-      border-radius: 10px;
-      color: var(--text-muted);
-      cursor: pointer;
-      font-size: 0.8125rem;
-      font-weight: 500;
-      transition: all 0.2s ease;
-      margin: 0.75rem;
+      padding: 0.5rem;
+      margin: 0.5rem;
       margin-top: 0;
+      background: transparent;
+      border: 1px dashed var(--border-color);
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s ease;
     }
 
     .add-task-btn:hover {
-      border-color: var(--accent-primary);
-      color: var(--accent-primary);
-      background: var(--glow-primary);
+      border-color: var(--accent-blue);
+      color: var(--accent-blue);
     }
 
-    /* Modal */
+    /* ============ VIEW: TASK DETAIL ============ */
+    .view-container {
+      display: none;
+    }
+
+    .view-container.active {
+      display: block;
+    }
+
+    .detail-view {
+      max-width: 1200px;
+    }
+
+    .breadcrumb {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+
+    .breadcrumb a {
+      color: var(--accent-blue);
+      text-decoration: none;
+    }
+
+    .breadcrumb a:hover {
+      text-decoration: underline;
+    }
+
+    .detail-header {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .detail-title {
+      font-size: 16px;
+      color: var(--text-dark);
+      margin-bottom: 0.5rem;
+    }
+
+    .detail-meta {
+      display: flex;
+      gap: 2rem;
+      font-size: 11px;
+    }
+
+    .meta-item {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .meta-label { color: var(--text-muted); }
+    .meta-value { color: var(--accent-blue); }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .detail-section {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+    }
+
+    .section-header {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .section-body {
+      padding: 1rem;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .section-body.full-height {
+      max-height: none;
+    }
+
+    /* Description */
+    .description-text {
+      color: var(--text-dark);
+      font-size: 12px;
+      white-space: pre-wrap;
+      line-height: 1.6;
+    }
+
+    /* Output */
+    .output-text {
+      color: var(--text-secondary);
+      font-size: 11px;
+      white-space: pre-wrap;
+    }
+
+    .output-empty {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    /* ============ TRACES ============ */
+    .traces-stats {
+      display: flex;
+      gap: 2rem;
+      margin-bottom: 1rem;
+      padding: 0.75rem 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+    }
+
+    .trace-stat {
+      text-align: center;
+    }
+
+    .trace-stat-value {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--accent-blue);
+    }
+
+    .trace-stat-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .traces-list {
+      border: 1px solid var(--border-color);
+    }
+
+    .trace-item {
+      display: grid;
+      grid-template-columns: 80px 90px 1fr auto;
+      gap: 1rem;
+      padding: 0.5rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 11px;
+      align-items: center;
+    }
+
+    .trace-item:last-child {
+      border-bottom: none;
+    }
+
+    .trace-time {
+      color: var(--text-muted);
+      font-size: 10px;
+    }
+
+    .trace-type {
+      padding: 0.125rem 0.5rem;
+      text-transform: uppercase;
+      font-size: 9px;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .trace-type.start { background: var(--accent-blue); color: #000; }
+    .trace-type.tool_call { background: var(--accent-yellow); color: #000; }
+    .trace-type.llm_call { background: var(--accent-magenta); color: #000; }
+    .trace-type.message { background: var(--text-primary); color: #000; }
+    .trace-type.error { background: var(--accent-red); color: #000; }
+    .trace-type.complete { background: var(--accent-cyan); color: #000; }
+
+    .trace-content {
+      color: var(--text-primary);
+    }
+
+    .trace-meta {
+      color: var(--text-muted);
+      font-size: 10px;
+      display: flex;
+      gap: 1rem;
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+    }
+
+    /* ============ VIEW: GANTT ============ */
+    .gantt-view {
+      max-width: 100%;
+      overflow-x: auto;
+    }
+
+    .gantt-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .gantt-controls {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .gantt-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      min-height: 400px;
+    }
+
+    .gantt-timeline {
+      display: flex;
+      border-bottom: 1px solid var(--border-color);
+      background: var(--bg-secondary);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .gantt-timeline-label {
+      width: 200px;
+      min-width: 200px;
+      padding: 0.5rem 1rem;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      border-right: 1px solid var(--border-color);
+    }
+
+    .gantt-timeline-days {
+      display: flex;
+      flex: 1;
+    }
+
+    .gantt-day {
+      min-width: 40px;
+      padding: 0.5rem 0.25rem;
+      text-align: center;
+      font-size: 10px;
+      color: var(--text-muted);
+      border-right: 1px solid var(--border-color);
+    }
+
+    .gantt-day.today {
+      background: var(--glow-blue);
+      color: var(--accent-blue);
+      font-weight: 600;
+    }
+
+    .gantt-day.weekend {
+      background: var(--bg-elevated);
+    }
+
+    .gantt-rows {
+      position: relative;
+    }
+
+    .gantt-row {
+      display: flex;
+      border-bottom: 1px solid var(--border-color);
+      min-height: 36px;
+    }
+
+    .gantt-row:hover {
+      background: var(--bg-secondary);
+    }
+
+    .gantt-row-label {
+      width: 200px;
+      min-width: 200px;
+      padding: 0.5rem 1rem;
+      font-size: 11px;
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+    }
+
+    .gantt-row-label:hover {
+      color: var(--accent-blue);
+    }
+
+    .gantt-row-label .priority {
+      font-size: 9px;
+      padding: 0.125rem 0.25rem;
+    }
+
+    .gantt-row-label .title {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .gantt-row-label .owner {
+      font-size: 10px;
+      color: var(--accent-cyan);
+    }
+
+    .gantt-row-cells {
+      display: flex;
+      flex: 1;
+      position: relative;
+    }
+
+    .gantt-cell {
+      min-width: 40px;
+      border-right: 1px solid var(--border-color);
+    }
+
+    .gantt-cell.weekend {
+      background: var(--bg-elevated);
+    }
+
+    .gantt-bar {
+      position: absolute;
+      height: 20px;
+      top: 8px;
+      border-radius: 3px;
+      font-size: 9px;
+      display: flex;
+      align-items: center;
+      padding: 0 0.5rem;
+      color: #000;
+      font-weight: 500;
+      cursor: pointer;
+      transition: transform 0.1s ease;
+    }
+
+    .gantt-bar:hover {
+      transform: scaleY(1.2);
+    }
+
+    .gantt-bar.backlog { background: var(--text-muted); }
+    .gantt-bar.ready { background: var(--accent-cyan); }
+    .gantt-bar.in_progress { background: var(--accent-yellow); }
+    .gantt-bar.done { background: var(--accent-green); }
+
+    .gantt-legend {
+      display: flex;
+      gap: 1rem;
+      padding: 0.75rem 1rem;
+      border-top: 1px solid var(--border-color);
+      background: var(--bg-secondary);
+      font-size: 11px;
+    }
+
+    .gantt-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+    }
+
+    .gantt-legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+    }
+
+    /* ============ VIEW: AGENTS ============ */
+    .agents-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+
+    .agent-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      padding: 1rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .agent-card:hover {
+      border-color: var(--accent-blue);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .agent-card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .agent-card-status {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      box-shadow: 0 0 10px var(--accent-green);
+    }
+
+    .agent-card-name {
+      font-size: 14px;
+      color: var(--text-dark);
+    }
+
+    .agent-card-role {
+      margin-left: auto;
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      padding: 0.25rem 0.5rem;
+      border: 1px solid var(--border-color);
+    }
+
+    .agent-card-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* ============ VIEW: TRACES ============ */
+    .traces-view {
+      max-width: 1400px;
+    }
+
+    .traces-filter {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .task-trace-group {
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border-color);
+      background: var(--bg-card);
+    }
+
+    .task-trace-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.75rem 1rem;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      cursor: pointer;
+    }
+
+    .task-trace-header:hover {
+      background: var(--bg-elevated);
+    }
+
+    .task-trace-priority {
+      font-size: 10px;
+      padding: 0.125rem 0.375rem;
+    }
+
+    .task-trace-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-dark);
+      flex: 1;
+    }
+
+    .task-trace-meta {
+      display: flex;
+      gap: 1rem;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .task-trace-meta .count {
+      color: var(--accent-blue);
+      font-weight: 500;
+    }
+
+    .task-trace-meta .agent {
+      color: var(--accent-cyan);
+    }
+
+    .task-trace-body {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .task-trace-body.collapsed {
+      display: none;
+    }
+
+    .filter-btn {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 0.375rem 0.75rem;
+      font-family: inherit;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .filter-btn:hover {
+      border-color: var(--accent-blue);
+      color: var(--accent-blue);
+    }
+
+    .filter-btn.active {
+      background: var(--accent-blue);
+      color: white;
+      border-color: var(--accent-blue);
+    }
+
+    /* ============ STATUS BUTTONS ============ */
+    .status-buttons {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .status-btn {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 0.5rem 1rem;
+      font-family: inherit;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .status-btn:hover {
+      border-color: var(--accent-blue);
+      color: var(--accent-blue);
+    }
+
+    .status-btn.active {
+      background: var(--accent-blue);
+      color: white;
+      border-color: var(--accent-blue);
+    }
+
+    /* ============ MODALS ============ */
     .modal-overlay {
       display: none;
       position: fixed;
@@ -556,9 +899,7 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(15, 23, 42, 0.4);
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
+      background: rgba(0, 0, 0, 0.5);
       z-index: 100;
       align-items: center;
       justify-content: center;
@@ -569,458 +910,488 @@
     }
 
     .modal {
-      background: var(--bg-primary);
+      background: var(--bg-card);
       border: 1px solid var(--border-color);
-      border-radius: 20px;
-      padding: 2rem;
+      padding: 1.5rem;
       width: 100%;
-      max-width: 480px;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+      max-width: 500px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     }
 
-    .modal h2 {
-      font-size: 1.25rem;
-      font-weight: 700;
+    .modal-title {
+      font-size: 14px;
+      color: var(--text-dark);
       margin-bottom: 1.5rem;
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-color);
     }
 
     .form-group {
-      margin-bottom: 1.25rem;
+      margin-bottom: 1rem;
     }
 
     .form-group label {
       display: block;
-      font-size: 0.8125rem;
-      font-weight: 500;
-      color: var(--text-secondary);
-      margin-bottom: 0.5rem;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 0.375rem;
+      text-transform: uppercase;
     }
 
     .form-group input,
     .form-group textarea,
     .form-group select {
       width: 100%;
-      padding: 0.75rem 1rem;
-      background: var(--bg-primary);
+      padding: 0.5rem 0.75rem;
+      background: var(--bg-card);
       border: 1px solid var(--border-color);
-      border-radius: 10px;
       color: var(--text-primary);
-      font-size: 0.875rem;
       font-family: inherit;
-      transition: all 0.2s ease;
+      font-size: 12px;
+      transition: all 0.15s ease;
     }
 
     .form-group input:focus,
     .form-group textarea:focus,
     .form-group select:focus {
       outline: none;
-      border-color: var(--accent-primary);
-      box-shadow: 0 0 0 3px var(--glow-primary);
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 0 3px var(--glow-blue);
     }
 
     .form-group textarea {
-      min-height: 100px;
+      min-height: 80px;
       resize: vertical;
     }
 
     .modal-actions {
       display: flex;
       justify-content: flex-end;
-      gap: 0.75rem;
-      margin-top: 2rem;
+      gap: 0.5rem;
+      margin-top: 1.5rem;
     }
 
     .btn {
-      padding: 0.75rem 1.5rem;
-      border-radius: 10px;
-      font-size: 0.875rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
+      padding: 0.5rem 1rem;
       font-family: inherit;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-transform: uppercase;
     }
 
     .btn-secondary {
-      background: var(--bg-elevated);
+      background: transparent;
       border: 1px solid var(--border-color);
-      color: var(--text-primary);
+      color: var(--text-muted);
     }
 
     .btn-secondary:hover {
-      background: var(--bg-card);
-      border-color: var(--border-hover);
+      border-color: var(--text-secondary);
+      color: var(--text-secondary);
     }
 
     .btn-primary {
-      background: var(--accent-primary);
-      border: none;
+      background: var(--accent-blue);
+      border: 1px solid var(--accent-blue);
       color: white;
     }
 
     .btn-primary:hover {
-      background: #2563eb;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+      background: #1976d2;
+      border-color: #1976d2;
     }
 
+    .btn-danger {
+      background: var(--accent-red);
+      border: 1px solid var(--accent-red);
+      color: #000;
+    }
+
+    /* ============ LOADING ============ */
     .loading {
+      color: var(--text-muted);
+      padding: 1rem;
+    }
+
+    .blink {
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0; }
+    }
+
+    /* ============ COMMAND LINE ============ */
+    .cmd-input {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      padding: 1rem;
+      margin-top: auto;
+    }
+
+    .cmd-prompt {
       display: flex;
       align-items: center;
-      justify-content: center;
-      padding: 2rem;
-      color: var(--text-muted);
-      font-size: 0.875rem;
+      gap: 0.5rem;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+    .cmd-prompt-symbol {
+      color: var(--accent-blue);
     }
 
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
-    }
-
-    .spinner {
-      width: 20px;
-      height: 20px;
-      border: 2px solid var(--border-color);
-      border-top-color: var(--accent-primary);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin-right: 0.75rem;
-    }
-
-    /* Scrollbar */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-
-    ::-webkit-scrollbar-track {
+    .cmd-prompt input {
+      flex: 1;
       background: transparent;
+      border: none;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 12px;
+      outline: none;
     }
 
-    ::-webkit-scrollbar-thumb {
-      background: var(--border-color);
-      border-radius: 3px;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: var(--border-hover);
-    }
-
-    /* Empty state */
+    /* ============ EMPTY STATE ============ */
     .empty-state {
       text-align: center;
-      padding: 2rem 1rem;
+      padding: 2rem;
       color: var(--text-muted);
     }
 
     .empty-state-icon {
-      font-size: 2rem;
+      font-size: 24px;
       margin-bottom: 0.5rem;
-      opacity: 0.5;
-    }
-
-    .empty-state-text {
-      font-size: 0.75rem;
-    }
-
-    /* Agent Detail Modal */
-    .agent-detail-header {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      padding-bottom: 1.25rem;
-      border-bottom: 1px solid var(--border-color);
-      margin-bottom: 1.25rem;
-    }
-
-    .agent-detail-avatar {
-      width: 56px;
-      height: 56px;
-      border-radius: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-      background: var(--bg-elevated);
-      border: 2px solid var(--border-color);
-    }
-
-    .agent-detail-avatar img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .agent-detail-info {
-      flex: 1;
-    }
-
-    .agent-detail-info h3 {
-      font-size: 1.25rem;
-      font-weight: 700;
-      margin-bottom: 0.25rem;
-      text-transform: capitalize;
-    }
-
-    .agent-detail-role {
-      display: inline-block;
-      padding: 0.25rem 0.75rem;
-      background: var(--bg-elevated);
-      border: 1px solid var(--border-color);
-      border-radius: 20px;
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-      text-transform: capitalize;
-    }
-
-    .btn-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
-      background: var(--bg-elevated);
-      border: 1px solid var(--border-color);
-      color: var(--text-secondary);
-      cursor: pointer;
-      font-size: 1rem;
-      transition: all 0.2s ease;
-    }
-
-    .btn-icon:hover {
-      border-color: var(--accent-primary);
-      color: var(--accent-primary);
-      background: var(--glow-primary);
-    }
-
-    .agent-detail-section {
-      margin-bottom: 1.25rem;
-    }
-
-    .agent-detail-section h4 {
-      font-size: 0.8125rem;
-      font-weight: 600;
-      color: var(--text-secondary);
-      margin-bottom: 0.75rem;
-    }
-
-    .skills-list, .tools-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-
-    .skill-tag, .tool-tag {
-      padding: 0.375rem 0.75rem;
-      background: var(--bg-elevated);
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      font-size: 0.75rem;
-      color: var(--text-primary);
-      transition: all 0.2s ease;
-    }
-
-    .skill-tag:hover {
-      border-color: var(--accent-primary);
-      background: var(--glow-primary);
-    }
-
-    .tool-tag {
-      background: #ecfeff;
-      border-color: #a5f3fc;
-      color: #0891b2;
-    }
-
-    .prompt-preview {
-      background: var(--bg-secondary);
-      border: 1px solid var(--border-color);
-      border-radius: 10px;
-      padding: 1rem;
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-      max-height: 120px;
-      overflow-y: auto;
-      font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
-      line-height: 1.5;
-      white-space: pre-wrap;
     }
   </style>
 </head>
 <body>
   <header class="header">
-    <div class="logo">
-      <div class="logo-icon">
-        <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <!-- Central node -->
-          <circle cx="16" cy="16" r="5" fill="#3b82f6"/>
-          <!-- Outer nodes -->
-          <circle cx="6" cy="10" r="3" fill="#0891b2"/>
-          <circle cx="26" cy="10" r="3" fill="#0891b2"/>
-          <circle cx="6" cy="24" r="3" fill="#10b981"/>
-          <circle cx="26" cy="24" r="3" fill="#10b981"/>
-          <!-- Connection lines -->
-          <path d="M9 11L12 14" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round"/>
-          <path d="M23 11L20 14" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round"/>
-          <path d="M9 23L12 19" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round"/>
-          <path d="M23 23L20 19" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round"/>
-          <!-- Central sparkle -->
-          <circle cx="16" cy="16" r="2" fill="white"/>
-        </svg>
-      </div>
+    <div class="logo" onclick="showView('tasks')" style="cursor:pointer;">
+      <pre class="logo-ascii">┌─┐┌─┐┌─┐┌┐┌┌┬┐┬┌─┐
+├─┤│ ┬├┤ │││ │ ││
+┴ ┴└─┘└─┘┘└┘ ┴ ┴└─┘</pre>
       <div class="logo-text">
-        <h1>Agentic</h1>
-        <p>Multi-agent task management</p>
+        <h1>AGENTIC</h1>
+        <p>multi-agent orchestration platform</p>
       </div>
     </div>
+    <nav class="nav">
+      <button class="nav-btn active" onclick="showView('tasks')">TASKS</button>
+      <button class="nav-btn" onclick="showView('gantt')">GANTT</button>
+      <button class="nav-btn" onclick="showView('agents')">AGENTS</button>
+      <button class="nav-btn" onclick="showView('traces')">TRACES</button>
+    </nav>
     <div class="stats">
-      <div class="stat-card">
-        <div class="stat-value" id="total-tasks">0</div>
-        <div class="stat-label">Total Tasks</div>
+      <div class="stat">
+        <span class="stat-label">TOTAL:</span>
+        <span class="stat-value" id="total-tasks">0</span>
       </div>
-      <div class="stat-card">
-        <div class="stat-value" id="in-progress-tasks">0</div>
-        <div class="stat-label">In Progress</div>
+      <div class="stat">
+        <span class="stat-label">RUNNING:</span>
+        <span class="stat-value" id="in-progress-tasks">0</span>
       </div>
-      <div class="stat-card">
-        <div class="stat-value" id="done-tasks">0</div>
-        <div class="stat-label">Completed</div>
+      <div class="stat">
+        <span class="stat-label">DONE:</span>
+        <span class="stat-value" id="done-tasks">0</span>
       </div>
+      <button class="release-btn" id="release-stuck-btn" onclick="releaseStuckTasks()" style="display:none;">
+        RELEASE STUCK
+      </button>
     </div>
   </header>
 
   <main class="main">
     <aside class="sidebar">
       <div class="sidebar-section">
-        <h2 class="sidebar-title">
-          <span>👥</span> Team Agents
-        </h2>
+        <h2 class="sidebar-title">> AGENTS ONLINE</h2>
         <ul class="agent-list" id="agent-list">
-          <li class="loading"><div class="spinner"></div> Loading agents...</li>
+          <li class="loading">Loading<span class="blink">_</span></li>
         </ul>
       </div>
 
-      <div class="run-agent-panel">
-        <h3>⚡ Quick Run</h3>
-        <form class="run-agent-form" id="run-agent-form">
-          <select id="agent-select" required>
-            <option value="">Select agent...</option>
-          </select>
-          <input type="text" id="task-input" placeholder="Describe the task..." required>
-          <button type="submit">Run Agent</button>
+      <div class="cmd-input">
+        <div class="sidebar-title">> QUICK RUN</div>
+        <form id="run-agent-form">
+          <div class="form-group">
+            <select id="agent-select" required>
+              <option value="">select agent...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <input type="text" id="task-input" placeholder="describe task...">
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%">EXECUTE</button>
         </form>
       </div>
     </aside>
 
-    <div class="kanban" id="kanban">
-      <div class="column" data-status="backlog">
-        <div class="column-header">
-          <h3><span class="status-dot backlog"></span> Backlog</h3>
-          <span class="column-count" id="count-backlog">0</span>
+    <div class="content">
+      <!-- TASKS VIEW -->
+      <div class="view-container active" id="view-tasks">
+        <div class="kanban" id="kanban">
+          <div class="column" data-status="backlog">
+            <div class="column-header">
+              <div class="column-title"><span class="dot backlog"></span> BACKLOG</div>
+              <span class="column-count" id="count-backlog">0</span>
+            </div>
+            <div class="column-body" id="tasks-backlog"></div>
+            <button class="add-task-btn" onclick="openAddTaskModal('backlog')">+ NEW TASK</button>
+          </div>
+          <div class="column" data-status="ready">
+            <div class="column-header">
+              <div class="column-title"><span class="dot ready"></span> READY</div>
+              <span class="column-count" id="count-ready">0</span>
+            </div>
+            <div class="column-body" id="tasks-ready"></div>
+          </div>
+          <div class="column" data-status="in_progress">
+            <div class="column-header">
+              <div class="column-title"><span class="dot in_progress"></span> IN PROGRESS</div>
+              <span class="column-count" id="count-in_progress">0</span>
+            </div>
+            <div class="column-body" id="tasks-in_progress"></div>
+          </div>
+          <div class="column" data-status="done">
+            <div class="column-header">
+              <div class="column-title"><span class="dot done"></span> DONE</div>
+              <span class="column-count" id="count-done">0</span>
+            </div>
+            <div class="column-body" id="tasks-done"></div>
+          </div>
         </div>
-        <div class="column-body" id="tasks-backlog"></div>
-        <button class="add-task-btn" onclick="openAddTaskModal('backlog')">+ Add Task</button>
       </div>
 
-      <div class="column" data-status="ready">
-        <div class="column-header">
-          <h3><span class="status-dot ready"></span> Ready</h3>
-          <span class="column-count" id="count-ready">0</span>
+      <!-- TASK DETAIL VIEW -->
+      <div class="view-container" id="view-task-detail">
+        <div class="detail-view">
+          <div class="breadcrumb">
+            <a href="#" onclick="showView('tasks'); return false;">TASKS</a> / <span id="detail-task-id"></span>
+          </div>
+
+          <div class="detail-header">
+            <div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.5rem;">
+              <span class="task-priority" id="detail-priority"></span>
+              <span id="detail-status" style="color:var(--text-muted);font-size:11px;text-transform:uppercase;"></span>
+            </div>
+            <h2 class="detail-title" id="detail-title"></h2>
+            <div class="detail-meta">
+              <div class="meta-item">
+                <span class="meta-label">OWNER:</span>
+                <span class="meta-value" id="detail-owner">-</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">CREATED:</span>
+                <span class="meta-value" id="detail-created">-</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">STARTED:</span>
+                <span class="meta-value" id="detail-started">-</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">COMPLETED:</span>
+                <span class="meta-value" id="detail-completed">-</span>
+              </div>
+            </div>
+            <div class="status-buttons" id="detail-status-buttons">
+              <button class="status-btn" data-status="backlog">BACKLOG</button>
+              <button class="status-btn" data-status="ready">READY</button>
+              <button class="status-btn" data-status="in_progress">IN PROGRESS</button>
+              <button class="status-btn" data-status="done">DONE</button>
+            </div>
+          </div>
+
+          <div class="detail-grid">
+            <div class="detail-section">
+              <div class="section-header">DESCRIPTION</div>
+              <div class="section-body">
+                <div class="description-text" id="detail-description">No description provided.</div>
+              </div>
+            </div>
+            <div class="detail-section">
+              <div class="section-header">OUTPUT</div>
+              <div class="section-body">
+                <div class="output-text" id="detail-output"><span class="output-empty">No output yet. Run an agent to see results.</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-section" style="margin-top:1rem;">
+            <div class="section-header">
+              ACTIVITY MONITOR
+              <span id="detail-trace-count" style="color:var(--accent-cyan);">0 events</span>
+            </div>
+            <div class="traces-stats" id="detail-trace-stats">
+              <div class="trace-stat">
+                <div class="trace-stat-value" id="detail-stat-events">0</div>
+                <div class="trace-stat-label">Events</div>
+              </div>
+              <div class="trace-stat">
+                <div class="trace-stat-value" id="detail-stat-tokens">0</div>
+                <div class="trace-stat-label">Tokens</div>
+              </div>
+              <div class="trace-stat">
+                <div class="trace-stat-value" id="detail-stat-duration">0s</div>
+                <div class="trace-stat-label">Duration</div>
+              </div>
+              <div class="trace-stat">
+                <div class="trace-stat-value" id="detail-stat-llm">0</div>
+                <div class="trace-stat-label">LLM Calls</div>
+              </div>
+              <div class="trace-stat">
+                <div class="trace-stat-value" id="detail-stat-tools">0</div>
+                <div class="trace-stat-label">Tool Calls</div>
+              </div>
+            </div>
+            <div class="section-body" style="max-height:500px;padding:0;">
+              <div class="traces-list" id="detail-traces">
+                <div class="no-data">No activity recorded yet.</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:1rem;display:flex;gap:0.5rem;">
+            <button class="btn btn-primary" id="detail-run-btn" onclick="runDetailAgent()">RUN AGENT</button>
+            <button class="btn btn-danger" onclick="deleteDetailTask()">DELETE</button>
+          </div>
         </div>
-        <div class="column-body" id="tasks-ready"></div>
       </div>
 
-      <div class="column" data-status="in_progress">
-        <div class="column-header">
-          <h3><span class="status-dot in_progress"></span> In Progress</h3>
-          <span class="column-count" id="count-in_progress">0</span>
+      <!-- GANTT VIEW -->
+      <div class="view-container" id="view-gantt">
+        <div class="gantt-view">
+          <div class="gantt-header">
+            <div class="breadcrumb">> PROJECT TIMELINE</div>
+            <div class="gantt-controls">
+              <button class="filter-btn active" data-range="7" onclick="setGanttRange(7)">7 DAYS</button>
+              <button class="filter-btn" data-range="14" onclick="setGanttRange(14)">14 DAYS</button>
+              <button class="filter-btn" data-range="30" onclick="setGanttRange(30)">30 DAYS</button>
+            </div>
+          </div>
+          <div class="gantt-container" id="gantt-container">
+            <div class="no-data">Loading timeline<span class="blink">_</span></div>
+          </div>
+          <div class="gantt-legend">
+            <div class="gantt-legend-item">
+              <div class="gantt-legend-color" style="background:var(--text-muted)"></div>
+              <span>Backlog</span>
+            </div>
+            <div class="gantt-legend-item">
+              <div class="gantt-legend-color" style="background:var(--accent-cyan)"></div>
+              <span>Ready</span>
+            </div>
+            <div class="gantt-legend-item">
+              <div class="gantt-legend-color" style="background:var(--accent-yellow)"></div>
+              <span>In Progress</span>
+            </div>
+            <div class="gantt-legend-item">
+              <div class="gantt-legend-color" style="background:var(--accent-green)"></div>
+              <span>Done</span>
+            </div>
+          </div>
         </div>
-        <div class="column-body" id="tasks-in_progress"></div>
       </div>
 
-      <div class="column" data-status="done">
-        <div class="column-header">
-          <h3><span class="status-dot done"></span> Done</h3>
-          <span class="column-count" id="count-done">0</span>
+      <!-- AGENTS VIEW -->
+      <div class="view-container" id="view-agents">
+        <div class="breadcrumb">> REGISTERED AGENTS</div>
+        <div class="agents-grid" id="agents-grid">
+          <div class="loading">Loading<span class="blink">_</span></div>
         </div>
-        <div class="column-body" id="tasks-done"></div>
+      </div>
+
+      <!-- TRACES VIEW -->
+      <div class="view-container" id="view-traces">
+        <div class="traces-view">
+          <div class="breadcrumb">> ACTIVITY BY TASK</div>
+          <div class="traces-filter" id="traces-filter">
+            <button class="filter-btn active" data-filter="all">ALL</button>
+            <button class="filter-btn" data-filter="start">START</button>
+            <button class="filter-btn" data-filter="llm_call">LLM</button>
+            <button class="filter-btn" data-filter="tool_call">TOOL</button>
+            <button class="filter-btn" data-filter="message">MSG</button>
+            <button class="filter-btn" data-filter="error">ERROR</button>
+            <button class="filter-btn" data-filter="complete">COMPLETE</button>
+          </div>
+          <div id="global-traces">
+            <div class="no-data">Loading traces<span class="blink">_</span></div>
+          </div>
+        </div>
       </div>
     </div>
   </main>
 
-  <!-- Agent Details Modal -->
-  <div class="modal-overlay" id="agent-modal">
-    <div class="modal" style="max-width: 560px;">
-      <h2 id="agent-modal-title">🤖 Agent Details</h2>
-      <div id="agent-modal-content">
-        <div class="agent-detail-header">
-          <div class="agent-detail-avatar" id="agent-detail-avatar">⚡</div>
-          <div class="agent-detail-info">
-            <h3 id="agent-detail-name">Agent Name</h3>
-            <span class="agent-detail-role" id="agent-detail-role">specialist</span>
-          </div>
-          <button class="btn-icon" id="edit-agent-btn" title="Edit Agent">✏️</button>
-        </div>
-
-        <div class="agent-detail-section">
-          <h4>📋 Capabilities</h4>
-          <div class="skills-list" id="agent-skills"></div>
-        </div>
-
-        <div class="agent-detail-section">
-          <h4>🛠️ Tools</h4>
-          <div class="tools-list" id="agent-tools"></div>
-        </div>
-
-        <div class="agent-detail-section">
-          <h4>📝 System Prompt</h4>
-          <div class="prompt-preview" id="agent-prompt"></div>
-        </div>
-      </div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-secondary" onclick="closeAgentModal()">Close</button>
-        <button type="button" class="btn btn-primary" onclick="runAgentFromModal()">Run Agent</button>
-      </div>
-    </div>
-  </div>
-
   <!-- Add Task Modal -->
   <div class="modal-overlay" id="add-task-modal">
     <div class="modal">
-      <h2>✨ Create New Task</h2>
+      <h2 class="modal-title">> CREATE NEW TASK</h2>
       <form id="add-task-form">
         <div class="form-group">
-          <label>Task Title</label>
-          <input type="text" id="new-task-title" placeholder="What needs to be done?" required>
+          <label>TITLE</label>
+          <input type="text" id="new-task-title" placeholder="task title..." required>
         </div>
         <div class="form-group">
-          <label>Description</label>
-          <textarea id="new-task-description" placeholder="Add more details..."></textarea>
+          <label>DESCRIPTION</label>
+          <textarea id="new-task-description" placeholder="task details..."></textarea>
         </div>
         <div class="form-group">
-          <label>Assign to Agent</label>
+          <label>ASSIGN TO</label>
           <select id="new-task-owner">
-            <option value="">Unassigned</option>
+            <option value="">unassigned</option>
           </select>
         </div>
         <div class="form-group">
-          <label>Priority</label>
+          <label>PRIORITY</label>
           <select id="new-task-priority">
-            <option value="">None</option>
-            <option value="P0">🔴 P0 - Critical</option>
-            <option value="P1">🟠 P1 - High</option>
-            <option value="P2">🔵 P2 - Medium</option>
-            <option value="P3">⚪ P3 - Low</option>
+            <option value="">none</option>
+            <option value="P0">P0 - CRITICAL</option>
+            <option value="P1">P1 - HIGH</option>
+            <option value="P2">P2 - MEDIUM</option>
+            <option value="P3">P3 - LOW</option>
           </select>
         </div>
         <input type="hidden" id="new-task-status" value="backlog">
         <div class="modal-actions">
-          <button type="button" class="btn btn-secondary" onclick="closeAddTaskModal()">Cancel</button>
-          <button type="submit" class="btn btn-primary">Create Task</button>
+          <button type="button" class="btn btn-secondary" onclick="closeAddTaskModal()">CANCEL</button>
+          <button type="submit" class="btn btn-primary">CREATE</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Agent Modal -->
+  <div class="modal-overlay" id="edit-agent-modal">
+    <div class="modal" style="max-width: 600px;">
+      <h2 class="modal-title">> EDIT AGENT</h2>
+      <form id="edit-agent-form">
+        <div class="form-group">
+          <label>NAME</label>
+          <input type="text" id="edit-agent-name" placeholder="agent name..." required>
+        </div>
+        <div class="form-group">
+          <label>ROLE</label>
+          <select id="edit-agent-role">
+            <option value="manager">Manager</option>
+            <option value="specialist">Specialist</option>
+            <option value="support">Support</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>DESCRIPTION</label>
+          <input type="text" id="edit-agent-description" placeholder="brief description...">
+        </div>
+        <div class="form-group">
+          <label>CAPABILITIES (one per line)</label>
+          <textarea id="edit-agent-capabilities" rows="4" placeholder="capability 1&#10;capability 2&#10;..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>SYSTEM PROMPT</label>
+          <textarea id="edit-agent-prompt" rows="8" placeholder="system prompt..."></textarea>
+        </div>
+        <input type="hidden" id="edit-agent-id">
+        <div class="modal-actions">
+          <button type="button" class="btn btn-danger" onclick="deleteAgent()" style="margin-right:auto;">DELETE</button>
+          <button type="button" class="btn btn-secondary" onclick="closeEditAgentModal()">CANCEL</button>
+          <button type="submit" class="btn btn-primary">SAVE</button>
         </div>
       </form>
     </div>
@@ -1031,147 +1402,263 @@
     const PROJECT_ID = 'default';
     let agents = [];
     let tasks = [];
+    let currentView = 'tasks';
+    let selectedTaskId = null;
+    let traceFilter = 'all';
+    let ganttDays = 14;
 
-    // Fetch agents
+    // ============ VIEW MANAGEMENT ============
+    function showView(view, taskId = null) {
+      currentView = view;
+      document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+
+      if (view === 'tasks') {
+        document.getElementById('view-tasks').classList.add('active');
+        document.querySelector('.nav-btn:nth-child(1)').classList.add('active');
+      } else if (view === 'task-detail' && taskId) {
+        document.getElementById('view-task-detail').classList.add('active');
+        selectedTaskId = taskId;
+        loadTaskDetail(taskId);
+      } else if (view === 'gantt') {
+        document.getElementById('view-gantt').classList.add('active');
+        document.querySelector('.nav-btn:nth-child(2)').classList.add('active');
+        renderGantt();
+      } else if (view === 'agents') {
+        document.getElementById('view-agents').classList.add('active');
+        document.querySelector('.nav-btn:nth-child(3)').classList.add('active');
+        renderAgentsGrid();
+      } else if (view === 'traces') {
+        document.getElementById('view-traces').classList.add('active');
+        document.querySelector('.nav-btn:nth-child(4)').classList.add('active');
+        loadGlobalTraces();
+      }
+    }
+
+    // ============ GANTT CHART ============
+    function setGanttRange(days) {
+      ganttDays = days;
+      document.querySelectorAll('.gantt-controls .filter-btn').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.dataset.range) === days);
+      });
+      renderGantt();
+    }
+
+    function renderGantt() {
+      const container = document.getElementById('gantt-container');
+      if (tasks.length === 0) {
+        container.innerHTML = '<div class="no-data">No tasks to display</div>';
+        return;
+      }
+
+      // Generate date range (from earliest task to ganttDays from now)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const startDate = new Date(today);
+      startDate.setDate(startDate.getDate() - 3); // Start 3 days ago
+
+      const endDate = new Date(today);
+      endDate.setDate(endDate.getDate() + ganttDays);
+
+      const days = [];
+      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        days.push(new Date(d));
+      }
+
+      // Sort tasks by priority then by creation date
+      const priorityOrder = { P0: 0, P1: 1, P2: 2, P3: 3 };
+      const sortedTasks = [...tasks].sort((a, b) => {
+        const pa = priorityOrder[a.priority] ?? 99;
+        const pb = priorityOrder[b.priority] ?? 99;
+        if (pa !== pb) return pa - pb;
+        return new Date(a.createdAt) - new Date(b.createdAt);
+      });
+
+      // Build timeline header
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+      const timelineHtml = `
+        <div class="gantt-timeline">
+          <div class="gantt-timeline-label">TASK</div>
+          <div class="gantt-timeline-days">
+            ${days.map(d => {
+              const isToday = d.toDateString() === today.toDateString();
+              const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+              return `<div class="gantt-day ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}">
+                <div>${dayNames[d.getDay()]}</div>
+                <div>${d.getDate()}</div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+      `;
+
+      // Build rows
+      const rowsHtml = sortedTasks.map(task => {
+        const taskStart = new Date(task.startedAt || task.createdAt);
+        taskStart.setHours(0, 0, 0, 0);
+
+        const taskEnd = task.completedAt ? new Date(task.completedAt) : new Date();
+        taskEnd.setHours(23, 59, 59, 999);
+
+        // Calculate bar position
+        const startIdx = Math.max(0, Math.floor((taskStart - startDate) / (1000 * 60 * 60 * 24)));
+        const endIdx = Math.min(days.length - 1, Math.floor((taskEnd - startDate) / (1000 * 60 * 60 * 24)));
+        const barLeft = startIdx * 40;
+        const barWidth = Math.max(40, (endIdx - startIdx + 1) * 40 - 4);
+
+        return `
+          <div class="gantt-row">
+            <div class="gantt-row-label" onclick="showView('task-detail', '${task.id}')">
+              ${task.priority ? `<span class="priority priority-${task.priority}">${task.priority}</span>` : ''}
+              <span class="title">${escapeHtml(task.title)}</span>
+              <span class="owner">${task.owner || ''}</span>
+            </div>
+            <div class="gantt-row-cells">
+              ${days.map((d, i) => {
+                const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                return `<div class="gantt-cell ${isWeekend ? 'weekend' : ''}"></div>`;
+              }).join('')}
+              <div class="gantt-bar ${task.status}"
+                   style="left: ${barLeft}px; width: ${barWidth}px;"
+                   onclick="showView('task-detail', '${task.id}')"
+                   title="${task.title}">
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = `
+        ${timelineHtml}
+        <div class="gantt-rows">
+          ${rowsHtml}
+        </div>
+      `;
+    }
+
+    // ============ AGENTS ============
     async function fetchAgents() {
       try {
         const response = await fetch(`${API_BASE}/api/agents`);
         agents = await response.json();
-        renderAgents();
+        renderAgentsSidebar();
         populateAgentSelects();
       } catch (error) {
         console.error('Failed to fetch agents:', error);
-        document.getElementById('agent-list').innerHTML = '<li class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-text">Failed to load agents</div></li>';
+        document.getElementById('agent-list').innerHTML = '<li class="empty-state">Error loading agents</li>';
       }
     }
 
-    // Render agents in sidebar
-    function renderAgents() {
-      const agentList = document.getElementById('agent-list');
+    function renderAgentsSidebar() {
+      const list = document.getElementById('agent-list');
       if (agents.length === 0) {
-        agentList.innerHTML = '<li class="empty-state"><div class="empty-state-icon">🤖</div><div class="empty-state-text">No agents configured</div></li>';
+        list.innerHTML = '<li class="empty-state">No agents</li>';
         return;
       }
-
-      agentList.innerHTML = agents.map(agent => `
-        <li class="agent-item" onclick="openAgentModal('${agent.name}')">
-          <div class="agent-avatar ${agent.role}">
-            <img src="${getAgentAvatarUrl(agent.name, agent.role)}" alt="${agent.name}">
-            <div class="agent-status"></div>
-          </div>
-          <div class="agent-info">
-            <h3>${agent.name}</h3>
-            <p>${agent.role}</p>
-          </div>
+      list.innerHTML = agents.map(a => `
+        <li class="agent-item" onclick="showView('agents')">
+          <span class="agent-status"></span>
+          <span class="agent-name">${a.name}</span>
+          <span class="agent-role">${a.role}</span>
         </li>
       `).join('');
     }
 
-    // Generate DiceBear avatar URL based on agent name and role
-    function getAgentAvatarUrl(name, role) {
-      // Use different styles for different roles
-      const styles = {
-        manager: 'notionists',
-        specialist: 'bottts-neutral',
-        support: 'lorelei'
-      };
-      const style = styles[role] || 'bottts-neutral';
-      const seed = encodeURIComponent(name);
-      return `https://api.dicebear.com/9.x/${style}/svg?seed=${seed}&backgroundColor=transparent`;
+    function renderAgentsGrid() {
+      const grid = document.getElementById('agents-grid');
+      if (agents.length === 0) {
+        grid.innerHTML = '<div class="empty-state">No agents configured</div>';
+        return;
+      }
+      grid.innerHTML = agents.map(a => `
+        <div class="agent-card" onclick="openEditAgentModal('${a.id || a.name}')">
+          <div class="agent-card-header">
+            <span class="agent-card-status"></span>
+            <span class="agent-card-name">${a.name}</span>
+            <span class="agent-card-role">${a.role}</span>
+          </div>
+          <div class="agent-card-desc">${(a.systemPrompt || a.description || '').substring(0, 150)}...</div>
+        </div>
+      `).join('');
     }
 
-    // Get avatar URL for task owner (lookup agent role)
-    function getOwnerAvatarUrl(ownerName) {
-      const agent = agents.find(a => a.name === ownerName);
-      const role = agent ? agent.role : 'specialist';
-      return getAgentAvatarUrl(ownerName, role);
-    }
-
-    // Agent modal
-    let selectedAgentName = null;
-
-    function openAgentModal(agentName) {
-      const agent = agents.find(a => a.name === agentName);
+    // ============ EDIT AGENT MODAL ============
+    function openEditAgentModal(agentId) {
+      const agent = agents.find(a => (a.id || a.name) === agentId);
       if (!agent) return;
 
-      selectedAgentName = agentName;
+      document.getElementById('edit-agent-id').value = agent.id || agent.name;
+      document.getElementById('edit-agent-name').value = agent.name || '';
+      document.getElementById('edit-agent-role').value = agent.role || 'specialist';
+      document.getElementById('edit-agent-description').value = agent.description || '';
+      document.getElementById('edit-agent-capabilities').value = (agent.capabilities || []).join('\n');
+      document.getElementById('edit-agent-prompt').value = agent.systemPrompt || '';
 
-      // Set header
-      document.getElementById('agent-modal-title').innerHTML = `<img src="${getAgentAvatarUrl(agent.name, agent.role)}" style="width:24px;height:24px;border-radius:6px;vertical-align:middle;margin-right:8px;">${agent.name}`;
-      document.getElementById('agent-detail-avatar').innerHTML = `<img src="${getAgentAvatarUrl(agent.name, agent.role)}" alt="${agent.name}">`;
-      document.getElementById('agent-detail-name').textContent = agent.name;
-      document.getElementById('agent-detail-role').textContent = agent.role;
-
-      // Extract capabilities from system prompt
-      const capabilities = extractCapabilities(agent.systemPrompt);
-      document.getElementById('agent-skills').innerHTML = capabilities.length > 0
-        ? capabilities.map(c => `<span class="skill-tag">${c}</span>`).join('')
-        : '<span style="color: var(--text-muted); font-size: 0.75rem;">No capabilities defined</span>';
-
-      // Extract tools from system prompt
-      const tools = extractTools(agent.systemPrompt);
-      document.getElementById('agent-tools').innerHTML = tools.length > 0
-        ? tools.map(t => `<span class="tool-tag">${t}</span>`).join('')
-        : '<span style="color: var(--text-muted); font-size: 0.75rem;">Default tools</span>';
-
-      // Show prompt preview (first 300 chars)
-      const promptPreview = agent.systemPrompt ? agent.systemPrompt.substring(0, 400) + '...' : 'No system prompt';
-      document.getElementById('agent-prompt').textContent = promptPreview;
-
-      document.getElementById('agent-modal').classList.add('active');
+      document.getElementById('edit-agent-modal').classList.add('active');
     }
 
-    function closeAgentModal() {
-      document.getElementById('agent-modal').classList.remove('active');
-      selectedAgentName = null;
+    function closeEditAgentModal() {
+      document.getElementById('edit-agent-modal').classList.remove('active');
+      document.getElementById('edit-agent-form').reset();
     }
 
-    function runAgentFromModal() {
-      if (selectedAgentName) {
-        closeAgentModal();
-        document.getElementById('agent-select').value = selectedAgentName;
-        document.getElementById('task-input').focus();
+    document.getElementById('edit-agent-form').onsubmit = async (e) => {
+      e.preventDefault();
+      const agentId = document.getElementById('edit-agent-id').value;
+      const updates = {
+        name: document.getElementById('edit-agent-name').value,
+        role: document.getElementById('edit-agent-role').value,
+        description: document.getElementById('edit-agent-description').value,
+        capabilities: document.getElementById('edit-agent-capabilities').value.split('\n').filter(c => c.trim()),
+        systemPrompt: document.getElementById('edit-agent-prompt').value,
+      };
+
+      try {
+        const response = await fetch(`${API_BASE}/api/agents/${agentId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updates)
+        });
+        if (!response.ok) throw new Error('Failed to update');
+        closeEditAgentModal();
+        await fetchAgents();
+        renderAgentsGrid();
+      } catch (error) {
+        console.error('Failed to update agent:', error);
+        alert('Failed to update agent');
+      }
+    };
+
+    async function deleteAgent() {
+      const agentId = document.getElementById('edit-agent-id').value;
+      if (!agentId || !confirm('Delete this agent? This cannot be undone.')) return;
+
+      try {
+        const response = await fetch(`${API_BASE}/api/agents/${agentId}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete');
+        closeEditAgentModal();
+        await fetchAgents();
+        renderAgentsGrid();
+      } catch (error) {
+        console.error('Failed to delete agent:', error);
+        alert('Failed to delete agent');
       }
     }
 
-    function extractCapabilities(prompt) {
-      if (!prompt) return [];
-      const capMatch = prompt.match(/## Capabilities\s*([\s\S]*?)(?=##|$)/i);
-      if (!capMatch) return [];
-      const lines = capMatch[1].split('\n').filter(l => l.trim().startsWith('-'));
-      return lines.slice(0, 6).map(l => l.replace(/^-\s*/, '').trim()).filter(Boolean);
-    }
-
-    function extractTools(prompt) {
-      if (!prompt) return [];
-      const toolMatch = prompt.match(/## Tech Stack[^#]*|## Tools[^#]*/i);
-      if (!toolMatch) return ['Read', 'Write', 'Bash', 'Grep'];
-      const lines = toolMatch[0].split('\n').filter(l => l.trim().startsWith('-'));
-      return lines.slice(0, 5).map(l => l.replace(/^-\s*/, '').split('/')[0].trim()).filter(Boolean);
-    }
-
-    // Close agent modal on overlay click
-    document.getElementById('agent-modal').addEventListener('click', (e) => {
-      if (e.target === e.currentTarget) closeAgentModal();
-    });
-
-    // Populate agent selects
     function populateAgentSelects() {
       const selects = [document.getElementById('agent-select'), document.getElementById('new-task-owner')];
       selects.forEach(select => {
         if (!select) return;
-        const currentValue = select.value;
-        const options = select.id === 'agent-select'
-          ? '<option value="">Select agent...</option>'
-          : '<option value="">Unassigned</option>';
-        select.innerHTML = options + agents.map(a =>
-          `<option value="${a.name}">${a.name} (${a.role})</option>`
-        ).join('');
-        select.value = currentValue;
+        const defaultOpt = select.id === 'agent-select' ? 'select agent...' : 'unassigned';
+        select.innerHTML = `<option value="">${defaultOpt}</option>` +
+          agents.map(a => `<option value="${a.name}">${a.name}</option>`).join('');
       });
     }
 
-    // Fetch tasks
+    // ============ TASKS ============
     async function fetchTasks() {
       try {
         const response = await fetch(`${API_BASE}/api/projects/${PROJECT_ID}/tasks`);
@@ -1183,7 +1670,6 @@
       }
     }
 
-    // Render tasks in Kanban columns
     function renderTasks() {
       const statuses = ['backlog', 'ready', 'in_progress', 'done'];
       statuses.forEach(status => {
@@ -1192,90 +1678,316 @@
         document.getElementById(`count-${status}`).textContent = statusTasks.length;
 
         if (statusTasks.length === 0) {
-          container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">${status === 'done' ? '🎉' : '📋'}</div><div class="empty-state-text">${status === 'done' ? 'No completed tasks' : 'No tasks here'}</div></div>`;
+          container.innerHTML = `<div class="empty-state">-</div>`;
           return;
         }
 
         container.innerHTML = statusTasks.map(task => `
-          <div class="task-card" draggable="true" data-task-id="${task.id}"
-               ondragstart="dragStart(event)" ondragend="dragEnd(event)">
+          <div class="task-card" onclick="showView('task-detail', '${task.id}')">
             ${task.priority ? `<span class="task-priority priority-${task.priority}">${task.priority}</span>` : ''}
             <div class="task-title">${escapeHtml(task.title)}</div>
-            ${task.description ? `<div class="task-description">${escapeHtml(task.description)}</div>` : ''}
-            <div class="task-footer">
-              <div class="task-owner">
-                ${task.owner ? `<img class="owner-avatar" src="${getOwnerAvatarUrl(task.owner)}" alt="${task.owner}">${task.owner}` : '<span style="color: var(--text-muted);">Unassigned</span>'}
-              </div>
-              <div class="task-actions">
-                <button class="task-action-btn" onclick="deleteTask('${task.id}')" title="Delete">🗑️</button>
-              </div>
+            <div class="task-meta">
+              <span class="task-owner">${task.owner || '-'}</span>
+              <span>${task.output ? '✓' : ''}</span>
             </div>
           </div>
         `).join('');
       });
-
-      // Set up drop zones
-      document.querySelectorAll('.column-body').forEach(col => {
-        col.ondragover = dragOver;
-        col.ondrop = drop;
-      });
     }
 
-    // Update stats
     function updateStats() {
       document.getElementById('total-tasks').textContent = tasks.length;
-      document.getElementById('in-progress-tasks').textContent = tasks.filter(t => t.status === 'in_progress').length;
+      const inProgressCount = tasks.filter(t => t.status === 'in_progress').length;
+      document.getElementById('in-progress-tasks').textContent = inProgressCount;
       document.getElementById('done-tasks').textContent = tasks.filter(t => t.status === 'done').length;
+
+      // Show/hide release button based on stuck tasks
+      const releaseBtn = document.getElementById('release-stuck-btn');
+      releaseBtn.style.display = inProgressCount > 0 ? 'inline-block' : 'none';
     }
 
-    // Drag and drop
-    let draggedTaskId = null;
+    async function releaseStuckTasks() {
+      const stuckTasks = tasks.filter(t => t.status === 'in_progress');
+      if (stuckTasks.length === 0) return;
 
-    function dragStart(e) {
-      draggedTaskId = e.target.dataset.taskId;
-      e.target.classList.add('dragging');
-    }
+      if (!confirm(`Release ${stuckTasks.length} stuck task(s) back to READY?`)) return;
 
-    function dragEnd(e) {
-      e.target.classList.remove('dragging');
-    }
+      const btn = document.getElementById('release-stuck-btn');
+      btn.textContent = 'RELEASING...';
+      btn.disabled = true;
 
-    function dragOver(e) {
-      e.preventDefault();
-    }
-
-    async function drop(e) {
-      e.preventDefault();
-      const newStatus = e.currentTarget.id.replace('tasks-', '');
-      if (draggedTaskId && newStatus) {
-        await updateTaskStatus(draggedTaskId, newStatus);
+      try {
+        for (const task of stuckTasks) {
+          await fetch(`${API_BASE}/api/tasks/${task.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'ready', startedAt: null })
+          });
+        }
+        await fetchTasks();
+      } catch (error) {
+        console.error('Failed to release tasks:', error);
+        alert('Failed to release some tasks');
+      } finally {
+        btn.textContent = 'RELEASE STUCK';
+        btn.disabled = false;
       }
     }
 
-    async function updateTaskStatus(taskId, status) {
+    // ============ TASK DETAIL ============
+    async function loadTaskDetail(taskId) {
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
+
+      document.getElementById('detail-task-id').textContent = task.id;
+      document.getElementById('detail-title').textContent = task.title;
+      document.getElementById('detail-status').textContent = task.status.replace('_', ' ');
+      document.getElementById('detail-owner').textContent = task.owner || '-';
+      document.getElementById('detail-created').textContent = formatDate(task.createdAt);
+      document.getElementById('detail-started').textContent = formatDate(task.startedAt);
+      document.getElementById('detail-completed').textContent = formatDate(task.completedAt);
+      document.getElementById('detail-description').textContent = task.description || 'No description provided.';
+
+      const outputEl = document.getElementById('detail-output');
+      outputEl.innerHTML = task.output
+        ? `<span style="color:var(--text-primary)">${escapeHtml(task.output)}</span>`
+        : '<span class="output-empty">No output yet. Run an agent to see results.</span>';
+
+      const priorityEl = document.getElementById('detail-priority');
+      if (task.priority) {
+        priorityEl.textContent = task.priority;
+        priorityEl.className = `task-priority priority-${task.priority}`;
+        priorityEl.style.display = 'inline-block';
+      } else {
+        priorityEl.style.display = 'none';
+      }
+
+      // Status buttons
+      document.querySelectorAll('#detail-status-buttons .status-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.status === task.status);
+        btn.onclick = () => changeTaskStatus(taskId, btn.dataset.status);
+      });
+
+      // Run button visibility
+      document.getElementById('detail-run-btn').style.display = task.owner ? 'block' : 'none';
+
+      // Load traces
+      await loadTaskTraces(taskId);
+    }
+
+    async function loadTaskTraces(taskId) {
+      try {
+        const [tracesRes, statsRes] = await Promise.all([
+          fetch(`${API_BASE}/api/tasks/${taskId}/traces?limit=100`),
+          fetch(`${API_BASE}/api/tasks/${taskId}/traces/stats`)
+        ]);
+
+        const traces = await tracesRes.json();
+        const stats = await statsRes.json();
+
+        document.getElementById('detail-trace-count').textContent = `${stats.totalTraces || 0} events`;
+        document.getElementById('detail-stat-events').textContent = stats.totalTraces || 0;
+        document.getElementById('detail-stat-tokens').textContent = formatNumber(stats.totalTokens || 0);
+        document.getElementById('detail-stat-duration').textContent = formatDuration(stats.totalLatencyMs || 0);
+        document.getElementById('detail-stat-llm').textContent = stats.byEventType?.llm_call || 0;
+        document.getElementById('detail-stat-tools').textContent = stats.byEventType?.tool_call || 0;
+
+        const container = document.getElementById('detail-traces');
+        if (!traces || traces.length === 0) {
+          container.innerHTML = '<div class="no-data">No activity recorded yet.</div>';
+          return;
+        }
+
+        container.innerHTML = traces.map(t => `
+          <div class="trace-item">
+            <span class="trace-time">${formatTime(t.createdAt)}</span>
+            <span class="trace-type ${t.eventType}">${t.eventType}</span>
+            <span class="trace-content">${escapeHtml(t.content)}</span>
+            <span class="trace-meta">
+              ${t.tokens ? `${t.tokens} tok` : ''}
+              ${t.latencyMs ? `${t.latencyMs}ms` : ''}
+            </span>
+          </div>
+        `).join('');
+      } catch (error) {
+        console.error('Failed to load traces:', error);
+      }
+    }
+
+    async function changeTaskStatus(taskId, newStatus) {
       try {
         await fetch(`${API_BASE}/api/tasks/${taskId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status })
+          body: JSON.stringify({ status: newStatus })
         });
         await fetchTasks();
+        loadTaskDetail(taskId);
       } catch (error) {
-        console.error('Failed to update task:', error);
+        console.error('Failed to update status:', error);
       }
     }
 
-    async function deleteTask(taskId) {
-      if (!confirm('Delete this task?')) return;
+    async function runDetailAgent() {
+      const task = tasks.find(t => t.id === selectedTaskId);
+      if (!task || !task.owner) return;
+
+      const btn = document.getElementById('detail-run-btn');
+      btn.textContent = 'RUNNING...';
+      btn.disabled = true;
+
       try {
-        await fetch(`${API_BASE}/api/tasks/${taskId}`, { method: 'DELETE' });
+        const response = await fetch(`${API_BASE}/api/run-agent`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            agentName: task.owner,
+            task: task.title + (task.description ? `: ${task.description}` : '')
+          })
+        });
+        const result = await response.json();
+
+        await fetch(`${API_BASE}/api/tasks/${selectedTaskId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            output: result.result,
+            status: 'done',
+            completedAt: new Date().toISOString()
+          })
+        });
+
         await fetchTasks();
+        loadTaskDetail(selectedTaskId);
       } catch (error) {
-        console.error('Failed to delete task:', error);
+        console.error('Failed to run agent:', error);
+        alert('Failed to run agent');
+      } finally {
+        btn.textContent = 'RUN AGENT';
+        btn.disabled = false;
       }
     }
 
-    // Add task modal
+    async function deleteDetailTask() {
+      if (!selectedTaskId || !confirm('Delete this task?')) return;
+      try {
+        await fetch(`${API_BASE}/api/tasks/${selectedTaskId}`, { method: 'DELETE' });
+        await fetchTasks();
+        showView('tasks');
+      } catch (error) {
+        console.error('Failed to delete:', error);
+      }
+    }
+
+    // ============ GLOBAL TRACES ============
+    async function loadGlobalTraces() {
+      try {
+        const response = await fetch(`${API_BASE}/api/traces/recent?limit=100`);
+        const traces = await response.json();
+
+        const container = document.getElementById('global-traces');
+        if (!traces || traces.length === 0) {
+          container.innerHTML = '<div class="no-data">No traces recorded.</div>';
+          return;
+        }
+
+        renderGlobalTraces(traces);
+
+        // Setup filter buttons
+        document.querySelectorAll('#traces-filter .filter-btn').forEach(btn => {
+          btn.onclick = () => {
+            document.querySelectorAll('#traces-filter .filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            traceFilter = btn.dataset.filter;
+            renderGlobalTraces(traces);
+          };
+        });
+      } catch (error) {
+        console.error('Failed to load traces:', error);
+      }
+    }
+
+    function renderGlobalTraces(traces) {
+      const filtered = traceFilter === 'all' ? traces : traces.filter(t => t.eventType === traceFilter);
+      const container = document.getElementById('global-traces');
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="no-data">No matching traces.</div>';
+        return;
+      }
+
+      // Group traces by taskId
+      const groupedByTask = {};
+      filtered.forEach(t => {
+        if (!groupedByTask[t.taskId]) {
+          groupedByTask[t.taskId] = {
+            taskId: t.taskId,
+            traces: [],
+            agentName: t.agentName,
+            latestTime: t.createdAt
+          };
+        }
+        groupedByTask[t.taskId].traces.push(t);
+        if (new Date(t.createdAt) > new Date(groupedByTask[t.taskId].latestTime)) {
+          groupedByTask[t.taskId].latestTime = t.createdAt;
+        }
+      });
+
+      // Sort traces within each group by time (newest first)
+      Object.values(groupedByTask).forEach(group => {
+        group.traces.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      });
+
+      // Sort groups by latest activity
+      const sortedGroups = Object.values(groupedByTask).sort((a, b) =>
+        new Date(b.latestTime) - new Date(a.latestTime)
+      );
+
+      // Render grouped traces
+      container.innerHTML = sortedGroups.map(group => {
+        const task = tasks.find(t => t.id === group.taskId);
+        const taskTitle = task ? task.title : `Task ${group.taskId.substring(0, 8)}`;
+        const taskPriority = task?.priority;
+        const totalTokens = group.traces.reduce((sum, t) => sum + (t.tokens || 0), 0);
+
+        return `
+          <div class="task-trace-group">
+            <div class="task-trace-header" onclick="toggleTraceGroup('${group.taskId}')">
+              ${taskPriority ? `<span class="task-trace-priority priority-${taskPriority}">${taskPriority}</span>` : ''}
+              <span class="task-trace-title">${escapeHtml(taskTitle)}</span>
+              <div class="task-trace-meta">
+                <span class="agent">${group.agentName || '-'}</span>
+                <span class="count">${group.traces.length} events</span>
+                ${totalTokens > 0 ? `<span>${formatNumber(totalTokens)} tokens</span>` : ''}
+                <span>${formatTime(group.latestTime)}</span>
+              </div>
+            </div>
+            <div class="task-trace-body" id="trace-group-${group.taskId}">
+              ${group.traces.map(t => `
+                <div class="trace-item" style="cursor:pointer;" onclick="event.stopPropagation(); showView('task-detail', '${t.taskId}')">
+                  <span class="trace-time">${formatTime(t.createdAt)}</span>
+                  <span class="trace-type ${t.eventType}">${t.eventType}</span>
+                  <span class="trace-content">${escapeHtml(t.content)}</span>
+                  <span class="trace-meta">
+                    ${t.tokens ? `${t.tokens} tok` : ''}
+                    ${t.latencyMs ? `${t.latencyMs}ms` : ''}
+                  </span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleTraceGroup(taskId) {
+      const body = document.getElementById(`trace-group-${taskId}`);
+      if (body) {
+        body.classList.toggle('collapsed');
+      }
+    }
+
+    // ============ ADD TASK MODAL ============
     function openAddTaskModal(status = 'backlog') {
       document.getElementById('new-task-status').value = status;
       document.getElementById('add-task-modal').classList.add('active');
@@ -1308,21 +2020,15 @@
       }
     };
 
-    // Run agent
-    function selectAgent(agentName) {
-      document.getElementById('agent-select').value = agentName;
-      document.getElementById('task-input').focus();
-    }
-
+    // ============ RUN AGENT FORM ============
     document.getElementById('run-agent-form').onsubmit = async (e) => {
       e.preventDefault();
       const agentName = document.getElementById('agent-select').value;
       const task = document.getElementById('task-input').value;
-
       if (!agentName || !task) return;
 
       const btn = e.target.querySelector('button');
-      btn.textContent = 'Running...';
+      btn.textContent = 'RUNNING...';
       btn.disabled = true;
 
       try {
@@ -1338,35 +2044,67 @@
         console.error('Failed to run agent:', error);
         alert('Failed to run agent');
       } finally {
-        btn.textContent = 'Run Agent';
+        btn.textContent = 'EXECUTE';
         btn.disabled = false;
         document.getElementById('task-input').value = '';
       }
     };
 
-    // Close modals on escape
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        closeAddTaskModal();
-        closeAgentModal();
-      }
-    });
+    // ============ UTILITIES ============
+    function formatDate(dateStr) {
+      if (!dateStr) return '-';
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
 
-    // Close modal on overlay click
-    document.getElementById('add-task-modal').addEventListener('click', (e) => {
-      if (e.target === e.currentTarget) closeAddTaskModal();
-    });
+    function formatTime(dateStr) {
+      const d = new Date(dateStr);
+      return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function formatNumber(num) {
+      if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+      if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+      return num.toString();
+    }
+
+    function formatDuration(ms) {
+      if (ms >= 60000) return Math.round(ms / 60000) + 'm';
+      if (ms >= 1000) return Math.round(ms / 1000) + 's';
+      return ms + 'ms';
+    }
 
     function escapeHtml(text) {
+      if (!text) return '';
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
     }
 
-    // Initialize
+    // ============ EVENT LISTENERS ============
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeAddTaskModal();
+        closeEditAgentModal();
+      }
+    });
+
+    document.getElementById('add-task-modal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeAddTaskModal();
+    });
+
+    document.getElementById('edit-agent-modal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeEditAgentModal();
+    });
+
+    // ============ INITIALIZE ============
     fetchAgents();
     fetchTasks();
-    setInterval(fetchTasks, 30000); // Refresh every 30s
+    setInterval(fetchTasks, 30000);
+    setInterval(() => {
+      if (currentView === 'traces') loadGlobalTraces();
+      if (currentView === 'task-detail' && selectedTaskId) loadTaskTraces(selectedTaskId);
+    }, 10000);
   </script>
 </body>
 </html>

@@ -27,7 +27,12 @@ const orchestrator = new AgentOrchestrator({
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    slack: !!process.env.SLACK_BOT_TOKEN,
+    database: !!process.env.DATABASE_URL,
+  });
 });
 
 // ============== Project Routes ==============
@@ -91,7 +96,7 @@ app.get('/api/tasks/:taskId', async (req, res) => {
 app.patch('/api/tasks/:taskId', async (req, res) => {
   try {
     const { taskId } = req.params;
-    const { title, description, status, owner, priority } = req.body;
+    const { title, description, status, owner, priority, output, startedAt, completedAt } = req.body;
 
     // Only include defined values to avoid overwriting existing fields
     const updates: Record<string, string | undefined> = {};
@@ -100,6 +105,9 @@ app.patch('/api/tasks/:taskId', async (req, res) => {
     if (status !== undefined) updates.status = status;
     if (owner !== undefined) updates.owner = owner;
     if (priority !== undefined) updates.priority = priority;
+    if (output !== undefined) updates.output = output;
+    if (startedAt !== undefined) updates.startedAt = startedAt;
+    if (completedAt !== undefined) updates.completedAt = completedAt;
 
     const task = await taskDb.updateTask(taskId, updates);
     if (!task) {
@@ -169,6 +177,32 @@ app.post('/api/agents', async (req, res) => {
   }
 });
 
+app.patch('/api/agents/:agentId', async (req, res) => {
+  try {
+    const { agentId } = req.params;
+    const updates = req.body;
+    const updatedBy = req.body.updatedBy || 'api';
+    delete updates.updatedBy;
+    const agent = await agentRegistry.updateAgent(agentId, updates, updatedBy);
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+    res.json(agent);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update agent' });
+  }
+});
+
+app.delete('/api/agents/:agentId', async (req, res) => {
+  try {
+    const { agentId } = req.params;
+    await agentRegistry.deleteAgent(agentId);
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete agent' });
+  }
+});
+
 app.get('/api/agents/:agentId/performance', async (req, res) => {
   try {
     const { agentId } = req.params;
@@ -183,11 +217,14 @@ app.get('/api/agents/:agentId/performance', async (req, res) => {
 
 app.post('/api/run-agent', async (req, res) => {
   try {
-    const { agentName, task, context } = req.body;
+    const { agentName, task, context, slackUserId } = req.body;
     if (!agentName || !task) {
       return res.status(400).json({ error: 'agentName and task are required' });
     }
-    const result = await orchestrator.runAgent(agentName, task, context);
+    const result = await orchestrator.runAgent(agentName, task, {
+      ...context,
+      slackUserId,
+    });
     res.json({ result });
   } catch (error) {
     console.error('Agent run failed:', error);
@@ -197,7 +234,8 @@ app.post('/api/run-agent', async (req, res) => {
 
 app.post('/api/sprint-check', async (req, res) => {
   try {
-    const result = await orchestrator.runSprintCheck();
+    const { slackUserId } = req.body || {};
+    const result = await orchestrator.runSprintCheck(slackUserId);
     res.json({ result });
   } catch (error) {
     res.status(500).json({ error: 'Sprint check failed' });
@@ -206,7 +244,8 @@ app.post('/api/sprint-check', async (req, res) => {
 
 app.post('/api/daily-standup', async (req, res) => {
   try {
-    const result = await orchestrator.runDailyStandup();
+    const { slackUserId } = req.body || {};
+    const result = await orchestrator.runDailyStandup(slackUserId);
     res.json({ result });
   } catch (error) {
     res.status(500).json({ error: 'Daily standup failed' });
@@ -242,6 +281,60 @@ app.get('/api/rules', async (req, res) => {
     res.json(rules);
   } catch (error) {
     res.status(500).json({ error: 'Failed to list rules' });
+  }
+});
+
+// ============== Trace/Monitoring Routes ==============
+
+// Log a trace event for a task
+app.post('/api/tasks/:taskId/traces', async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const { agentName, eventType, content, metadata, tokens, latencyMs } = req.body;
+
+    if (!agentName || !eventType || !content) {
+      return res.status(400).json({ error: 'agentName, eventType, and content are required' });
+    }
+
+    const trace = await taskDb.logTrace(taskId, agentName, eventType, content, metadata, tokens, latencyMs);
+    res.status(201).json(trace);
+  } catch (error) {
+    console.error('Failed to log trace:', error);
+    res.status(500).json({ error: 'Failed to log trace' });
+  }
+});
+
+// Get all traces for a task
+app.get('/api/tasks/:taskId/traces', async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const limit = parseInt(req.query.limit as string) || 100;
+    const traces = await taskDb.getTraces(taskId, limit);
+    res.json(traces);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get traces' });
+  }
+});
+
+// Get trace stats for a task
+app.get('/api/tasks/:taskId/traces/stats', async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const stats = await taskDb.getTraceStats(taskId);
+    res.json(stats);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get trace stats' });
+  }
+});
+
+// Get recent traces across all tasks
+app.get('/api/traces/recent', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 50;
+    const traces = await taskDb.getRecentTraces(limit);
+    res.json(traces);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get recent traces' });
   }
 });
 
