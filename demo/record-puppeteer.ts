@@ -114,9 +114,10 @@ async function createDemoData() {
 async function recordDemo() {
   console.log('🎬 Starting demo recording...');
 
-  await clearData();
-  const tasks = await createDemoData();
-  console.log(`✅ Created ${tasks.length} demo tasks with traces`);
+  // DON'T clear or create data on production - just record what's there
+  // await clearData();
+  // const tasks = await createDemoData();
+  console.log('📹 Recording existing production data (no modifications)...');
 
   const browser = await puppeteer.launch({
     headless: false,
@@ -199,301 +200,63 @@ async function recordDemo() {
     await sleep(2500);
     await page.evaluate(() => document.getElementById('demo-title')?.remove());
 
-    // ========== SCENE 3: Move task from Backlog to Ready ==========
-    console.log('Scene 3: Move task from Backlog to Ready');
+    // ========== SCENE 3: Gantt Chart ==========
+    console.log('Scene 3: Gantt Chart');
+    await page.evaluate(() => {
+      const title = document.createElement('div');
+      title.id = 'demo-title';
+      title.innerHTML = `<div style="
+        position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+        background: #2563eb; color: white; padding: 10px 24px; border-radius: 8px;
+        font-family: -apple-system, sans-serif; font-size: 16px; font-weight: 600;
+        z-index: 10000;
+      ">Project Timeline</div>`;
+      document.body.appendChild(title);
+    });
+    await page.evaluate(() => {
+      const btns = document.querySelectorAll('.nav-btn');
+      btns.forEach((btn: any) => { if (btn.textContent?.includes('GANTT')) btn.click(); });
+    });
+    await sleep(3000);
+    await page.evaluate(() => document.getElementById('demo-title')?.remove());
+
+    // ========== SCENE 4: Activity Traces ==========
+    console.log('Scene 4: Activity Traces');
+    await page.evaluate(() => {
+      const title = document.createElement('div');
+      title.id = 'demo-title';
+      title.innerHTML = `<div style="
+        position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+        background: #2563eb; color: white; padding: 10px 24px; border-radius: 8px;
+        font-family: -apple-system, sans-serif; font-size: 16px; font-weight: 600;
+        z-index: 10000;
+      ">Agent Activity Traces</div>`;
+      document.body.appendChild(title);
+    });
+    await page.evaluate(() => {
+      const btns = document.querySelectorAll('.nav-btn');
+      btns.forEach((btn: any) => { if (btn.textContent?.includes('TRACES')) btn.click(); });
+    });
+    await sleep(2000);
+
+    // Expand first task group to show traces
+    await page.evaluate(() => {
+      const groups = document.querySelectorAll('.trace-group-header');
+      if (groups.length > 0) (groups[0] as HTMLElement).click();
+    });
+    await sleep(3000);
+    await page.evaluate(() => document.getElementById('demo-title')?.remove());
+
+    // ========== SCENE 5: Back to Tasks ==========
+    console.log('Scene 5: Back to Tasks');
     await page.evaluate(() => {
       const btns = document.querySelectorAll('.nav-btn');
       btns.forEach((btn: any) => { if (btn.textContent?.includes('TASKS')) btn.click(); });
     });
-    await sleep(1000);
+    await sleep(2000);
 
-    const backlogTask = tasks.find((t: any) => t.status === 'backlog');
-    if (backlogTask) {
-      // Show overlay indicating task is being moved to ready
-      await page.evaluate(() => {
-        const overlay = document.createElement('div');
-        overlay.id = 'cmd-overlay';
-        overlay.innerHTML = `<div style="
-          position: fixed; bottom: 20px; left: 20px;
-          background: #1e293b; border-radius: 8px; padding: 16px 20px;
-          font-family: 'Monaco', monospace; font-size: 13px;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 10000;
-        ">
-          <div style="color: #64748b; margin-bottom: 6px;">$ Moving task to ready...</div>
-          <div style="color: #f59e0b;">PATCH /api/tasks/:id {"status": "ready"}</div>
-        </div>`;
-        document.body.appendChild(overlay);
-      });
-      await sleep(1200);
-
-      // Move task from backlog to ready
-      await fetch(`${API_URL}/tasks/${backlogTask.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'ready' })
-      });
-
-      await page.reload({ waitUntil: 'networkidle0' });
-      await page.evaluate(() => {
-        const overlay = document.getElementById('cmd-overlay');
-        if (overlay) {
-          overlay.innerHTML = `<div style="
-            position: fixed; bottom: 20px; left: 20px;
-            background: #1e293b; border-radius: 8px; padding: 16px 20px;
-            font-family: 'Monaco', monospace; font-size: 13px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 10000;
-          ">
-            <div style="color: #22c55e;">✓ Task moved to Ready</div>
-          </div>`;
-        }
-      });
-      await sleep(1500);
-      await page.evaluate(() => document.getElementById('cmd-overlay')?.remove());
-
-      // ========== SCENE 4: Agent picks up task from Ready ==========
-      console.log('Scene 4: Agent picks up task from Ready');
-      await page.evaluate(() => {
-        const overlay = document.createElement('div');
-        overlay.id = 'cmd-overlay';
-        overlay.innerHTML = `<div style="
-          position: fixed; bottom: 20px; left: 20px;
-          background: #1e293b; border-radius: 8px; padding: 16px 20px;
-          font-family: 'Monaco', monospace; font-size: 13px;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 10000;
-        ">
-          <div style="color: #64748b; margin-bottom: 6px;">$ Agent picking up task...</div>
-          <div style="color: #3b82f6;">POST /api/run-agent {"agent": "engineering"}</div>
-        </div>`;
-        document.body.appendChild(overlay);
-      });
-      await sleep(1200);
-
-      // Agent picks up task - move to in_progress
-      await fetch(`${API_URL}/tasks/${backlogTask.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'in_progress' })
-      });
-
-      // Add trace events for the agent's work
-      await fetch(`${API_URL}/tasks/${backlogTask.id}/traces`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          agentName: 'engineering',
-          eventType: 'start',
-          content: `Started: ${backlogTask.title}`
-        })
-      });
-
-      await page.reload({ waitUntil: 'networkidle0' });
-      await page.evaluate(() => {
-        const overlay = document.getElementById('cmd-overlay');
-        if (overlay) {
-          overlay.innerHTML = `<div style="
-            position: fixed; bottom: 20px; left: 20px;
-            background: #1e293b; border-radius: 8px; padding: 16px 20px;
-            font-family: 'Monaco', monospace; font-size: 13px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 10000;
-          ">
-            <div style="color: #22c55e;">✓ Agent started working</div>
-            <div style="color: #fbbf24; margin-top: 4px;">[Slack] #task-engineering</div>
-          </div>`;
-        }
-      });
-      await sleep(1500);
-      await page.evaluate(() => document.getElementById('cmd-overlay')?.remove());
-
-      // Add multiple trace events while still on Tasks view (build up logs)
-      await fetch(`${API_URL}/tasks/${backlogTask.id}/traces`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          agentName: 'engineering',
-          eventType: 'llm_call',
-          content: 'Analyzing payment integration requirements',
-          tokens: { input: 2100, output: 1580 },
-          latencyMs: 2800
-        })
-      });
-      await sleep(800);
-
-      await fetch(`${API_URL}/tasks/${backlogTask.id}/traces`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          agentName: 'engineering',
-          eventType: 'tool_use',
-          content: 'Reading Stripe API documentation',
-          latencyMs: 450
-        })
-      });
-      await sleep(600);
-
-      await fetch(`${API_URL}/tasks/${backlogTask.id}/traces`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          agentName: 'engineering',
-          eventType: 'llm_call',
-          content: 'Designing payment flow architecture',
-          tokens: { input: 1850, output: 2100 },
-          latencyMs: 3500
-        })
-      });
-      await sleep(600);
-
-      await fetch(`${API_URL}/tasks/${backlogTask.id}/traces`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          agentName: 'engineering',
-          eventType: 'tool_use',
-          content: 'Creating Stripe integration module',
-          latencyMs: 650
-        })
-      });
-      await sleep(500);
-
-      // ========== SCENE 5: Show Traces - Agent work in progress ==========
-      console.log('Scene 5: Traces - Agent work live');
-      await page.evaluate(() => {
-        const title = document.createElement('div');
-        title.id = 'demo-title';
-        title.innerHTML = `<div style="
-          position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-          background: #2563eb; color: white; padding: 10px 24px; border-radius: 8px;
-          font-family: -apple-system, sans-serif; font-size: 16px; font-weight: 600;
-          z-index: 10000;
-        ">Live Agent Traces</div>`;
-        document.body.appendChild(title);
-      });
-      await page.evaluate(() => {
-        const btns = document.querySelectorAll('.nav-btn');
-        btns.forEach((btn: any) => { if (btn.textContent?.includes('TRACES')) btn.click(); });
-      });
-      await sleep(1500);
-
-      // Expand the payment task group to show all traces
-      await page.evaluate(() => {
-        const groups = document.querySelectorAll('.trace-group-header');
-        // Find the one with "payment" in it
-        groups.forEach((g: any) => {
-          if (g.textContent?.toLowerCase().includes('payment')) g.click();
-        });
-      });
-      await sleep(3000);
-
-      // Add one more trace event in real-time
-      await fetch(`${API_URL}/tasks/${backlogTask.id}/traces`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          agentName: 'engineering',
-          eventType: 'tool_use',
-          content: 'Writing unit tests for payment flow',
-          latencyMs: 890
-        })
-      });
-      await page.reload({ waitUntil: 'networkidle0' });
-      await page.evaluate(() => {
-        const btns = document.querySelectorAll('.nav-btn');
-        btns.forEach((btn: any) => { if (btn.textContent?.includes('TRACES')) btn.click(); });
-      });
-      await sleep(1000);
-
-      // Re-expand the payment task group
-      await page.evaluate(() => {
-        const groups = document.querySelectorAll('.trace-group-header');
-        groups.forEach((g: any) => {
-          if (g.textContent?.toLowerCase().includes('payment')) g.click();
-        });
-      });
-      await sleep(2500);
-      await page.evaluate(() => document.getElementById('demo-title')?.remove());
-    }
-
-    // ========== SCENE 6: Slack conversation ==========
-    console.log('Scene 6: Slack conversation');
-    await page.evaluate(() => {
-      const btns = document.querySelectorAll('.nav-btn');
-      btns.forEach((btn: any) => { if (btn.textContent?.includes('TASKS')) btn.click(); });
-    });
-    await sleep(500);
-
-    await page.evaluate(() => {
-      const slack = document.createElement('div');
-      slack.id = 'slack-panel';
-      slack.innerHTML = `<div style="
-        position: fixed; top: 80px; right: 20px; width: 360px;
-        background: #1a1d21; border-radius: 8px;
-        font-family: -apple-system, sans-serif; color: #fff;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.4); z-index: 10000; overflow: hidden;
-      ">
-        <div style="background: #350d36; padding: 12px 16px; display: flex; align-items: center; gap: 10px;">
-          <span style="font-weight: 600; font-size: 14px;"># task-engineering</span>
-          <span style="margin-left: auto; background: #22c55e; padding: 2px 8px; border-radius: 4px; font-size: 11px;">LIVE</span>
-        </div>
-        <div id="slack-messages" style="padding: 14px; min-height: 200px;"></div>
-      </div>`;
-      document.body.appendChild(slack);
-    });
-    await sleep(400);
-
-    const messages = [
-      { user: 'engineering', isBot: true, text: '🤖 Working on: Payment integration', delay: 700 },
-      { user: 'engineering', isBot: true, text: 'Setting up Stripe SDK...', delay: 900 },
-      { user: 'dean', isBot: false, text: 'Use the test keys first', delay: 1000 },
-      { user: 'engineering', isBot: true, text: '✓ Using test environment', delay: 800 },
-      { user: 'engineering', isBot: true, text: '✅ Payment flow complete!', delay: 700 },
-    ];
-
-    for (const msg of messages) {
-      await page.evaluate((m: any) => {
-        const container = document.getElementById('slack-messages');
-        if (!container) return;
-        const msgEl = document.createElement('div');
-        msgEl.style.cssText = 'display: flex; margin-bottom: 14px;';
-        msgEl.innerHTML = `
-          <div style="width: 34px; height: 34px; background: ${m.isBot ? '#4a154b' : '#2eb67d'};
-            border-radius: 4px; display: flex; align-items: center; justify-content: center;
-            margin-right: 10px; flex-shrink: 0; font-size: 15px;">${m.isBot ? '🤖' : '👤'}</div>
-          <div>
-            <div style="font-weight: 600; color: ${m.isBot ? '#1d9bd1' : '#fff'}; font-size: 13px;">
-              ${m.user} <span style="color: #616061; font-weight: 400; font-size: 11px;">now</span>
-            </div>
-            <div style="color: #d1d2d3; font-size: 13px; margin-top: 3px;">${m.text}</div>
-          </div>`;
-        container.appendChild(msgEl);
-        container.scrollTop = container.scrollHeight;
-      }, msg);
-      await sleep(msg.delay);
-    }
-    await sleep(1000);
-
-    if (backlogTask) {
-      await fetch(`${API_URL}/tasks/${backlogTask.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'done' })
-      });
-      await fetch(`${API_URL}/tasks/${backlogTask.id}/traces`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          agentName: 'engineering',
-          eventType: 'complete',
-          content: 'Payment integration completed'
-        })
-      });
-    }
-
-    await page.evaluate(() => document.getElementById('slack-panel')?.remove());
-    await page.reload({ waitUntil: 'networkidle0' });
-    await sleep(1000);
-
-    // ========== SCENE 7: Final CTA - Light Theme ==========
-    console.log('Scene 7: GitHub CTA');
+    // ========== SCENE 6: Final CTA - Light Theme ==========
+    console.log('Scene 6: GitHub CTA');
     await page.evaluate(() => {
       const cta = document.createElement('div');
       cta.innerHTML = `<div style="
