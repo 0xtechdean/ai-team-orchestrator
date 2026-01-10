@@ -176,6 +176,21 @@ async function recordDemo() {
       if (cards.length > 0) (cards[0] as HTMLElement).click();
     });
     await sleep(2000);
+
+    // Close the agent popup/modal
+    await page.evaluate(() => {
+      // Try clicking close button first
+      const closeBtn = document.querySelector('.modal-close, .close-btn, [aria-label="Close"]');
+      if (closeBtn) (closeBtn as HTMLElement).click();
+      // Or click the modal overlay/backdrop to close
+      const overlay = document.querySelector('.modal-overlay, .modal-backdrop, .overlay');
+      if (overlay) (overlay as HTMLElement).click();
+    });
+    await sleep(500);
+    // Press Escape as fallback
+    await page.keyboard.press('Escape');
+    await sleep(500);
+
     await page.evaluate(() => document.getElementById('demo-title')?.remove());
 
     // ========== SCENE 2: Kanban Dashboard ==========
