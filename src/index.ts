@@ -949,7 +949,7 @@ app.post('/api/claude-setup/complete-with-code', express.json(), async (req, res
 
   // Create expect script that sends the code
   const expectScript = `#!/usr/bin/expect -f
-set timeout 120
+set timeout 300
 spawn claude setup-token
 expect {
   "Paste code" {
@@ -1004,7 +1004,7 @@ expect {
       setTimeout(() => {
         proc.kill();
         resolve({ success: false, output: output + '\nTIMEOUT' });
-      }, 90000);
+      }, 300000);  // 5 minute timeout
     });
 
     // Clean up
