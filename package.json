@@ -26,15 +26,14 @@
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
     "ioredis": "^5.4.2",
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "puppeteer": "^24.0.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.0",
     "@types/node": "^22.19.5",
     "@types/pg": "^8.11.10",
-    "puppeteer": "^19.0.0",
-    "puppeteer-screen-recorder": "^3.0.6",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }

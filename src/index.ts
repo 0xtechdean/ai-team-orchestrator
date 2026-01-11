@@ -34,6 +34,234 @@ let setupPort: number | null = null;
 let setupStartTime: number | null = null;
 let setupAuthUrl: string | null = null;  // Store the full auth URL when detected
 
+// Puppeteer-based OAuth flow - runs entirely from server's IP
+app.post('/api/claude-setup/browser-auth', express.json(), async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+
+  try {
+    const puppeteer = await import('puppeteer');
+    const { spawn } = await import('child_process');
+
+    // Kill any existing setup process
+    if (setupProcess) {
+      setupProcess.kill();
+      setupProcess = null;
+    }
+
+    setupOutput = '';
+    setupToken = '';
+    setupAuthUrl = null;
+
+    // Start Claude setup-token process
+    setupProcess = spawn('unbuffer', ['-p', 'claude', 'setup-token'], {
+      env: {
+        ...process.env,
+        CI: 'true',
+        TERM: 'xterm-256color',
+        DISPLAY: '',
+      },
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    setupProcess.stdout?.on('data', (data) => {
+      const chunk = data.toString();
+      setupOutput += chunk;
+      console.log('[BrowserAuth]', chunk.substring(0, 200));
+
+      // Capture auth URL
+      const urlMatch = chunk.match(/https:\/\/claude\.ai\/oauth\/authorize\?[^\s\n]*state=[a-zA-Z0-9_-]+/);
+      if (urlMatch && !setupAuthUrl) {
+        setupAuthUrl = urlMatch[0];
+        console.log('[BrowserAuth] Auth URL captured');
+      }
+
+      // Capture token
+      const tokenMatch = chunk.match(/sk-ant-oat[a-zA-Z0-9_-]+/);
+      if (tokenMatch) {
+        setupToken = tokenMatch[0];
+        console.log('[BrowserAuth] Token captured!');
+      }
+    });
+
+    setupProcess.stderr?.on('data', (data) => {
+      setupOutput += data.toString();
+    });
+
+    // Wait for auth URL to appear
+    let attempts = 0;
+    while (!setupAuthUrl && attempts < 30) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      attempts++;
+    }
+
+    if (!setupAuthUrl) {
+      return res.status(500).json({ error: 'Failed to get auth URL from CLI' });
+    }
+
+    // Find localhost callback port in the auth URL
+    const portMatch = setupAuthUrl.match(/localhost%3A(\d+)/);
+    const callbackPort = portMatch ? parseInt(portMatch[1]) : null;
+
+    console.log('[BrowserAuth] Starting browser with auth URL');
+    console.log('[BrowserAuth] Callback port:', callbackPort);
+
+    // Launch Puppeteer to handle OAuth from server's IP
+    const browser = await puppeteer.default.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+      ],
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+    });
+
+    const page = await browser.newPage();
+
+    // Navigate to auth URL
+    await page.goto(setupAuthUrl, { waitUntil: 'networkidle2' });
+
+    // Check if we're on the login page
+    const pageUrl = page.url();
+    console.log('[BrowserAuth] Current URL:', pageUrl);
+
+    // Take screenshot for debugging
+    const screenshot = await page.screenshot({ encoding: 'base64' });
+
+    // Look for email input and enter it
+    try {
+      // Wait for email input
+      await page.waitForSelector('input[type="email"], input[name="email"], input[placeholder*="email"]', { timeout: 10000 });
+      await page.type('input[type="email"], input[name="email"], input[placeholder*="email"]', email);
+
+      // Click continue/submit button
+      const buttons = await page.$$('button[type="submit"], button:contains("Continue"), button:contains("Sign in")');
+      if (buttons.length > 0) {
+        await buttons[0].click();
+      }
+
+      // Wait for magic link message or next step
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      const pageContent = await page.content();
+
+      await browser.close();
+
+      res.json({
+        status: 'Email submitted',
+        message: 'Check your email for a magic link. Click it from THIS PAGE (copy the link and paste it into the next endpoint)',
+        currentUrl: page.url(),
+        screenshotBase64: screenshot.substring(0, 200) + '...',
+        nextStep: 'POST /api/claude-setup/browser-callback with the magic link URL',
+        callbackPort,
+      });
+    } catch (e) {
+      await browser.close();
+      res.status(500).json({
+        error: 'Failed to interact with login page',
+        details: String(e),
+        pageUrl,
+        screenshotBase64: screenshot,
+      });
+    }
+  } catch (error) {
+    console.error('[BrowserAuth] Error:', error);
+    res.status(500).json({ error: 'Browser auth failed', details: String(error) });
+  }
+});
+
+// Continue OAuth flow with magic link - opens the link from server's IP
+app.post('/api/claude-setup/browser-magic-link', express.json(), async (req, res) => {
+  const { magicLink } = req.body;
+
+  if (!magicLink) {
+    return res.status(400).json({ error: 'Magic link URL is required' });
+  }
+
+  if (!setupProcess) {
+    return res.status(400).json({
+      error: 'No setup process running',
+      hint: 'Start with POST /api/claude-setup/browser-auth first',
+    });
+  }
+
+  try {
+    const puppeteer = await import('puppeteer');
+
+    console.log('[BrowserAuth] Opening magic link from server...');
+
+    const browser = await puppeteer.default.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+      ],
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+    });
+
+    const page = await browser.newPage();
+
+    // Open the magic link - this should redirect to the OAuth callback
+    await page.goto(magicLink, { waitUntil: 'networkidle2', timeout: 30000 });
+
+    const finalUrl = page.url();
+    console.log('[BrowserAuth] Final URL after magic link:', finalUrl);
+
+    // If we ended up at localhost callback, extract and forward it
+    if (finalUrl.includes('localhost') && finalUrl.includes('callback')) {
+      const callbackParams = new URL(finalUrl).search;
+      const portMatch = finalUrl.match(/localhost:(\d+)/);
+      const port = portMatch ? parseInt(portMatch[1]) : 36755;
+
+      console.log('[BrowserAuth] Got localhost callback, forwarding to CLI...');
+
+      // Forward to CLI's local server
+      try {
+        const callbackResponse = await fetch(`http://localhost:${port}/callback${callbackParams}`);
+        console.log('[BrowserAuth] Callback forwarded, status:', callbackResponse.status);
+      } catch (e) {
+        console.log('[BrowserAuth] Callback forward failed (CLI might handle it directly):', e);
+      }
+    }
+
+    await browser.close();
+
+    // Wait for token to be captured
+    await new Promise(resolve => setTimeout(resolve, 5000));
+
+    // Check for token
+    const tokenMatch = setupOutput.match(/sk-ant-oat[a-zA-Z0-9_-]+/);
+    if (tokenMatch) {
+      setupToken = tokenMatch[0];
+      process.env.CLAUDE_CODE_OAUTH_TOKEN = setupToken;
+
+      res.json({
+        status: 'success',
+        token: setupToken,
+        message: 'Token captured! It has been set in the environment.',
+        hint: 'Test with POST /api/run-agent',
+      });
+    } else {
+      res.json({
+        status: 'pending',
+        finalUrl,
+        message: 'Magic link opened. Check /api/claude-setup/status for token.',
+        setupOutput: setupOutput.slice(-500),
+      });
+    }
+  } catch (error) {
+    console.error('[BrowserAuth] Magic link error:', error);
+    res.status(500).json({ error: 'Failed to open magic link', details: String(error) });
+  }
+});
+
 app.get('/api/claude-setup/start', async (req, res) => {
   const { spawn } = await import('child_process');
   const { writeFileSync, chmodSync } = await import('fs');
