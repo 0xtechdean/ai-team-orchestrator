@@ -485,11 +485,11 @@ app.post('/api/claude-setup/browser-magic-link', express.json(), async (req, res
         const callbackText = await magicPage.evaluate(() => document.body.innerText);
         console.log('[BrowserAuth] Callback page text:', callbackText.substring(0, 500));
 
-        // Extract the auth code (long alphanumeric string)
-        const authCodeMatch = callbackText.match(/([A-Za-z0-9_-]{40,})/);
+        // Extract the auth code in format: code#state (both are long alphanumeric strings)
+        const authCodeMatch = callbackText.match(/([A-Za-z0-9_-]{40,}#[A-Za-z0-9_-]{40,})/);
         if (authCodeMatch) {
           const authCode = authCodeMatch[1];
-          console.log('[BrowserAuth] Found auth code:', authCode.substring(0, 20) + '...');
+          console.log('[BrowserAuth] Found auth code (code#state):', authCode.substring(0, 30) + '...');
 
           // Feed the auth code to the CLI
           if (setupProcess && setupProcess.stdin) {
@@ -655,11 +655,11 @@ app.post('/api/claude-setup/browser-magic-link', express.json(), async (req, res
         const callbackText = await authPage.evaluate(() => document.body.innerText);
         console.log('[BrowserAuth] Callback page text:', callbackText.substring(0, 500));
 
-        // Extract the auth code (long alphanumeric string)
-        const authCodeMatch = callbackText.match(/([A-Za-z0-9_-]{40,})/);
+        // Extract the auth code in format: code#state (both are long alphanumeric strings)
+        const authCodeMatch = callbackText.match(/([A-Za-z0-9_-]{40,}#[A-Za-z0-9_-]{40,})/);
         if (authCodeMatch) {
           const authCode = authCodeMatch[1];
-          console.log('[BrowserAuth] Found auth code:', authCode.substring(0, 20) + '...');
+          console.log('[BrowserAuth] Found auth code (code#state):', authCode.substring(0, 30) + '...');
 
           // Feed the auth code to the CLI
           if (setupProcess && setupProcess.stdin) {
