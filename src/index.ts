@@ -34,6 +34,12 @@ let setupPort: number | null = null;
 let setupStartTime: number | null = null;
 let setupAuthUrl: string | null = null;  // Store the full auth URL when detected
 
+// Keep browser session alive between browser-auth and browser-magic-link
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let authBrowser: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let authPage: any = null;
+
 // Screenshot the auth page to see what we're working with (with stealth to bypass Cloudflare)
 app.get('/api/claude-setup/screenshot-auth', async (req, res) => {
   try {
@@ -353,7 +359,14 @@ app.post('/api/claude-setup/browser-auth', express.json(), async (req, res) => {
       // Check if we're now on a "check your email" page
       const bodyText = await page.evaluate(() => document.body.innerText);
 
-      await browser.close();
+      // KEEP browser session alive for browser-magic-link to reuse
+      // Close any previous session first
+      if (authBrowser && authBrowser !== browser) {
+        try { await authBrowser.close(); } catch {}
+      }
+      authBrowser = browser;
+      authPage = page;
+      console.log('[BrowserAuth] Keeping browser session alive for magic link step');
 
       res.json({
         status: 'Email submitted',
@@ -365,6 +378,7 @@ app.post('/api/claude-setup/browser-auth', express.json(), async (req, res) => {
         screenshotAfter: '/auth-after.png',
         nextStep: 'POST /api/claude-setup/browser-magic-link with { "magicLink": "https://..." }',
         callbackPort,
+        browserSessionKept: true,
       });
     } catch (e) {
       // Save error screenshot
@@ -386,7 +400,7 @@ app.post('/api/claude-setup/browser-auth', express.json(), async (req, res) => {
   }
 });
 
-// Continue OAuth flow with magic link - opens the link, gets verification code, enters it on login page
+// Continue OAuth flow with magic link - uses the SAME browser session from browser-auth
 app.post('/api/claude-setup/browser-magic-link', express.json(), async (req, res) => {
   const { magicLink } = req.body;
 
@@ -401,42 +415,31 @@ app.post('/api/claude-setup/browser-magic-link', express.json(), async (req, res
     });
   }
 
+  if (!authBrowser || !authPage) {
+    return res.status(400).json({
+      error: 'No browser session found',
+      hint: 'Browser session from browser-auth was closed or not started. Restart with POST /api/claude-setup/browser-auth first.',
+    });
+  }
+
   try {
-    const puppeteerExtra = await import('puppeteer-extra');
-    const StealthPlugin = await import('puppeteer-extra-plugin-stealth');
     const { writeFileSync } = await import('fs');
     const { join } = await import('path');
 
-    // Add stealth plugin to avoid Cloudflare detection
-    puppeteerExtra.default.use(StealthPlugin.default());
+    console.log('[BrowserAuth] Using existing browser session to complete OAuth...');
 
-    console.log('[BrowserAuth] Opening magic link to get verification code...');
+    // Step 1: Open magic link in a NEW TAB in the same browser
+    const magicPage = await authBrowser.newPage();
+    await magicPage.setViewport({ width: 1280, height: 800 });
+    await magicPage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
-    const browser = await puppeteerExtra.default.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--disable-blink-features=AutomationControlled',
-        '--window-size=1280,800',
-      ],
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-    });
-
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1280, height: 800 });
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-
-    // Step 1: Open the magic link to get the verification code
-    console.log('[BrowserAuth] Navigating to magic link...');
-    await page.goto(magicLink, { waitUntil: 'networkidle2', timeout: 60000 });
+    console.log('[BrowserAuth] Opening magic link in new tab...');
+    await magicPage.goto(magicLink, { waitUntil: 'networkidle2', timeout: 60000 });
 
     // Wait for Cloudflare challenge to complete
     let cfAttempts = 0;
     while (cfAttempts < 30) {
-      const title = await page.title();
+      const title = await magicPage.title();
       if (!title.includes('moment') && !title.includes('Cloudflare')) {
         break;
       }
@@ -447,16 +450,16 @@ app.post('/api/claude-setup/browser-magic-link', express.json(), async (req, res
     await new Promise(resolve => setTimeout(resolve, 3000));
 
     // Take screenshot of magic link page
-    const magicScreenshot = await page.screenshot({ encoding: 'base64' });
+    const magicScreenshot = await magicPage.screenshot({ encoding: 'base64' });
     writeFileSync(join(__dirname, '../public/magic-link-result.png'), Buffer.from(magicScreenshot, 'base64'));
 
     // Extract the verification code (6-digit number)
-    const pageText = await page.evaluate(() => document.body.innerText);
+    const pageText = await magicPage.evaluate(() => document.body.innerText);
     console.log('[BrowserAuth] Magic link page text:', pageText.substring(0, 300));
 
     const verificationCodeMatch = pageText.match(/(\d{6})/);
     if (!verificationCodeMatch) {
-      await browser.close();
+      await magicPage.close();
       return res.status(500).json({
         error: 'Could not find verification code on magic link page',
         screenshotUrl: '/magic-link-result.png',
@@ -467,60 +470,21 @@ app.post('/api/claude-setup/browser-magic-link', express.json(), async (req, res
     const verificationCode = verificationCodeMatch[1];
     console.log('[BrowserAuth] Found verification code:', verificationCode);
 
-    // Step 2: Go to the original auth URL
-    console.log('[BrowserAuth] Navigating to auth URL...');
-    await page.goto(setupAuthUrl as string, { waitUntil: 'networkidle2', timeout: 60000 });
+    // Close magic link tab
+    await magicPage.close();
 
-    // Wait for Cloudflare
-    cfAttempts = 0;
-    while (cfAttempts < 30) {
-      const title = await page.title();
-      if (!title.includes('moment') && !title.includes('Cloudflare')) {
-        break;
-      }
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      cfAttempts++;
-    }
+    // Step 2: Go back to the original page (authPage) which is already on "waiting for magic link"
+    console.log('[BrowserAuth] Switching back to original auth page...');
 
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Take screenshot of current state
+    let currentScreenshot = await authPage.screenshot({ encoding: 'base64' });
+    writeFileSync(join(__dirname, '../public/auth-before-verify.png'), Buffer.from(currentScreenshot, 'base64'));
 
-    // Step 3: Enter the email first (new browser session needs email entry)
-    console.log('[BrowserAuth] Entering email on auth page...');
-    try {
-      await page.waitForSelector('#email', { timeout: 10000 });
-
-      // Extract email from the magic link (base64 encoded after the colon)
-      const emailMatch = magicLink.match(/:([A-Za-z0-9+/=]+)$/);
-      let email = 'dean@othentic.xyz'; // default
-      if (emailMatch) {
-        try {
-          email = Buffer.from(emailMatch[1], 'base64').toString('utf-8');
-        } catch {
-          // Use default
-        }
-      }
-
-      console.log('[BrowserAuth] Using email:', email);
-      await page.type('#email', email, { delay: 50 });
-
-      // Click submit
-      await page.click('button[type="submit"]');
-
-      // Wait for the "magic link sent" page
-      await new Promise(resolve => setTimeout(resolve, 5000));
-    } catch (e) {
-      console.log('[BrowserAuth] Email entry failed, may already be on verification page:', e);
-    }
-
-    // Take screenshot after email entry
-    let afterEmailScreenshot = await page.screenshot({ encoding: 'base64' });
-    writeFileSync(join(__dirname, '../public/auth-after-email.png'), Buffer.from(afterEmailScreenshot, 'base64'));
-
-    // Step 4: Click on "Enter verification code" link
+    // Step 3: Click on "Enter verification code" link on the SAME page
     console.log('[BrowserAuth] Looking for verification code option...');
     try {
       // Try clicking by text content - look for "verification code" text
-      await page.evaluate(() => {
+      await authPage.evaluate(() => {
         const links = Array.from(document.querySelectorAll('a, button, span'));
         const verifyLink = links.find(el => el.textContent?.toLowerCase().includes('verification code'));
         if (verifyLink) (verifyLink as HTMLElement).click();
@@ -531,17 +495,17 @@ app.post('/api/claude-setup/browser-magic-link', express.json(), async (req, res
     }
 
     // Take screenshot after clicking verification link
-    const afterClickScreenshot = await page.screenshot({ encoding: 'base64' });
+    const afterClickScreenshot = await authPage.screenshot({ encoding: 'base64' });
     writeFileSync(join(__dirname, '../public/auth-verify-page.png'), Buffer.from(afterClickScreenshot, 'base64'));
 
-    // Step 5: Enter verification code
+    // Step 4: Enter verification code
     console.log('[BrowserAuth] Entering verification code:', verificationCode);
     try {
       // Wait for input field - could be multiple individual digit inputs or one text input
-      await page.waitForSelector('input', { timeout: 10000 });
+      await authPage.waitForSelector('input', { timeout: 10000 });
 
       // Check if there are multiple digit inputs (common for verification codes)
-      const inputs = await page.$$('input');
+      const inputs = await authPage.$$('input');
       console.log('[BrowserAuth] Found', inputs.length, 'input fields');
 
       if (inputs.length >= 6) {
@@ -553,7 +517,7 @@ app.post('/api/claude-setup/browser-magic-link', express.json(), async (req, res
       } else {
         // Single input - type the whole code
         console.log('[BrowserAuth] Entering code in single input...');
-        const codeInput = await page.$('input[type="text"], input[type="number"], input[inputmode="numeric"], input:not([type="email"])');
+        const codeInput = await authPage.$('input[type="text"], input[type="number"], input[inputmode="numeric"], input:not([type="email"])');
         if (codeInput) {
           await codeInput.type(verificationCode, { delay: 100 });
         }
@@ -561,12 +525,12 @@ app.post('/api/claude-setup/browser-magic-link', express.json(), async (req, res
 
       // Click submit/continue button
       await new Promise(resolve => setTimeout(resolve, 1000));
-      const submitBtn = await page.$('button[type="submit"]');
+      const submitBtn = await authPage.$('button[type="submit"]');
       if (submitBtn) {
         await submitBtn.click();
       } else {
         // Try any button that looks like continue
-        await page.evaluate(() => {
+        await authPage.evaluate(() => {
           const buttons = Array.from(document.querySelectorAll('button'));
           const continueBtn = buttons.find(btn =>
             btn.textContent?.toLowerCase().includes('continue') ||
@@ -581,18 +545,18 @@ app.post('/api/claude-setup/browser-magic-link', express.json(), async (req, res
       console.log('[BrowserAuth] Waiting for redirect to callback...');
       await new Promise(resolve => setTimeout(resolve, 10000));
 
-      const finalUrl = page.url();
+      const finalUrl = authPage.url();
       console.log('[BrowserAuth] Final URL:', finalUrl);
 
       // Take screenshot of final page
-      const finalScreenshot = await page.screenshot({ encoding: 'base64' });
+      const finalScreenshot = await authPage.screenshot({ encoding: 'base64' });
       writeFileSync(join(__dirname, '../public/auth-final.png'), Buffer.from(finalScreenshot, 'base64'));
 
       // Check if we're on the console callback page
       if (finalUrl.includes('console.anthropic.com') && finalUrl.includes('callback')) {
         console.log('[BrowserAuth] On callback page, extracting auth code...');
 
-        const callbackText = await page.evaluate(() => document.body.innerText);
+        const callbackText = await authPage.evaluate(() => document.body.innerText);
         console.log('[BrowserAuth] Callback page text:', callbackText.substring(0, 500));
 
         // Extract the auth code (long alphanumeric string)
@@ -615,7 +579,10 @@ app.post('/api/claude-setup/browser-magic-link', express.json(), async (req, res
               setupToken = tokenMatch[0];
               process.env.CLAUDE_CODE_OAUTH_TOKEN = setupToken;
 
-              await browser.close();
+              // Close browser and clean up
+              await authBrowser.close();
+              authBrowser = null;
+              authPage = null;
 
               return res.json({
                 status: 'success',
@@ -628,7 +595,10 @@ app.post('/api/claude-setup/browser-magic-link', express.json(), async (req, res
         }
       }
 
-      await browser.close();
+      // Close browser
+      await authBrowser.close();
+      authBrowser = null;
+      authPage = null;
 
       // Check for token one more time
       const tokenMatch = setupOutput.match(/sk-ant-oat[a-zA-Z0-9_-]+/);
@@ -654,7 +624,12 @@ app.post('/api/claude-setup/browser-magic-link', express.json(), async (req, res
       });
 
     } catch (e) {
-      await browser.close();
+      // Close browser on error
+      if (authBrowser) {
+        await authBrowser.close();
+        authBrowser = null;
+        authPage = null;
+      }
       res.status(500).json({
         error: 'Failed to enter verification code',
         details: String(e),
