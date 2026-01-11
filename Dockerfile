@@ -47,6 +47,7 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 COPY tsconfig.json ./
+COPY tsoa.json ./
 
 # Install ALL dependencies (including dev for build)
 RUN npm ci

@@ -27,3 +27,7 @@ coverage/
 
 # TypeScript cache
 *.tsbuildinfo
+
+# tsoa generated files
+src/generated/
+public/swagger.json

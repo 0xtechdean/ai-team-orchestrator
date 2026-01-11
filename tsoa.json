@@ -1,0 +1,26 @@
+{
+  "entryFile": "src/index.ts",
+  "noImplicitAdditionalProperties": "throw-on-extras",
+  "controllerPathGlobs": ["src/controllers/**/*.ts"],
+  "spec": {
+    "outputDirectory": "public",
+    "specVersion": 3,
+    "host": "localhost:3000",
+    "schemes": ["http"],
+    "tags": [
+      { "name": "Health", "description": "Health check endpoints" },
+      { "name": "Projects", "description": "Project management" },
+      { "name": "Tasks", "description": "Task management" },
+      { "name": "Agents", "description": "AI Agent management" },
+      { "name": "Orchestration", "description": "Agent orchestration" },
+      { "name": "Skills", "description": "Agent skills" },
+      { "name": "Rules", "description": "System rules" },
+      { "name": "Traces", "description": "Execution traces" },
+      { "name": "Claude Setup", "description": "Claude CLI setup" }
+    ]
+  },
+  "routes": {
+    "routesDir": "src/generated",
+    "basePath": "/"
+  }
+}
