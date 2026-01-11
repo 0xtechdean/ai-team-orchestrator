@@ -99,15 +99,20 @@ export async function runClaudeCode(
 
     console.log(`[ClaudeRunner] Command: ${bashCmd.substring(0, 150)}...`);
 
-    // Pass both API key and OAuth token - CLI will use whichever is valid
+    // Prefer API key over OAuth token (OAuth is IP-bound and won't work on servers)
+    // Only pass OAuth token if API key is not available
+    const useApiKey = !!process.env.ANTHROPIC_API_KEY;
+    console.log(`[ClaudeRunner] Using auth method: ${useApiKey ? 'API Key' : 'OAuth Token'}`);
+
     const child = spawn('unbuffer', ['bash', '-c', bashCmd], {
       cwd: workingDir,
       env: {
         ...process.env,
         CI: 'true',
         TERM: 'xterm-256color',
-        ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || '',
-        CLAUDE_CODE_OAUTH_TOKEN: process.env.CLAUDE_CODE_OAUTH_TOKEN || '',
+        // Only pass one auth method to avoid conflicts
+        ANTHROPIC_API_KEY: useApiKey ? process.env.ANTHROPIC_API_KEY : '',
+        CLAUDE_CODE_OAUTH_TOKEN: useApiKey ? '' : (process.env.CLAUDE_CODE_OAUTH_TOKEN || ''),
       },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
