@@ -1014,6 +1014,41 @@ app.post('/api/claude-setup/set-token', express.json(), async (req, res) => {
   });
 });
 
+// Load token from ~/.claude/.oauth_token file into environment
+app.post('/api/claude-setup/load-token', async (req, res) => {
+  const { readFileSync, existsSync } = await import('fs');
+  const { homedir } = await import('os');
+  const { join } = await import('path');
+
+  const oauthTokenPath = join(homedir(), '.claude', '.oauth_token');
+
+  if (!existsSync(oauthTokenPath)) {
+    return res.status(404).json({
+      error: 'No .oauth_token file found',
+      path: oauthTokenPath,
+      hint: 'Run browser-auth flow first to generate the token file',
+    });
+  }
+
+  try {
+    const token = readFileSync(oauthTokenPath, 'utf-8').trim();
+    if (!token.startsWith('sk-ant-')) {
+      return res.status(400).json({ error: 'Invalid token format in file' });
+    }
+
+    process.env.CLAUDE_CODE_OAUTH_TOKEN = token;
+    console.log('[Setup] Loaded token from file into environment');
+
+    res.json({
+      status: 'Token loaded successfully',
+      tokenPreview: token.substring(0, 30) + '...',
+      hint: 'Test with POST /api/run-agent',
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to read token file', details: String(e) });
+  }
+});
+
 // Send code to CLI stdin - for console.anthropic.com callback flow
 app.post('/api/claude-setup/send-code', express.json(), async (req, res) => {
   const { code } = req.body;
@@ -1074,10 +1109,22 @@ app.get('/api/claude-setup/debug', async (req, res) => {
   const { join } = await import('path');
 
   const claudeDir = join(homedir(), '.claude');
+  const oauthTokenPath = join(claudeDir, '.oauth_token');
+
+  // Try to read the .oauth_token file directly
+  let oauthToken: string | null = null;
+  try {
+    if (existsSync(oauthTokenPath)) {
+      oauthToken = readFileSync(oauthTokenPath, 'utf-8').trim();
+    }
+  } catch {}
+
   const result = {
     homeDir: homedir(),
     claudeDir,
     claudeDirExists: existsSync(claudeDir),
+    oauthTokenFile: oauthToken ? oauthToken.substring(0, 40) + '...' : null,
+    oauthTokenFileExists: existsSync(oauthTokenPath),
     files: [] as string[],
     tokenFiles: {} as Record<string, string>,
     envTokenPreview: process.env.CLAUDE_CODE_OAUTH_TOKEN
