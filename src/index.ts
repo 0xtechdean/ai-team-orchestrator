@@ -386,7 +386,7 @@ app.post('/api/claude-setup/browser-auth', express.json(), async (req, res) => {
   }
 });
 
-// Continue OAuth flow with magic link - opens the link from server's IP
+// Continue OAuth flow with magic link - opens the link, gets verification code, enters it on login page
 app.post('/api/claude-setup/browser-magic-link', express.json(), async (req, res) => {
   const { magicLink } = req.body;
 
@@ -394,7 +394,7 @@ app.post('/api/claude-setup/browser-magic-link', express.json(), async (req, res
     return res.status(400).json({ error: 'Magic link URL is required' });
   }
 
-  if (!setupProcess) {
+  if (!setupProcess || !setupAuthUrl) {
     return res.status(400).json({
       error: 'No setup process running',
       hint: 'Start with POST /api/claude-setup/browser-auth first',
@@ -410,7 +410,7 @@ app.post('/api/claude-setup/browser-magic-link', express.json(), async (req, res
     // Add stealth plugin to avoid Cloudflare detection
     puppeteerExtra.default.use(StealthPlugin.default());
 
-    console.log('[BrowserAuth] Opening magic link from server with stealth...');
+    console.log('[BrowserAuth] Opening magic link to get verification code...');
 
     const browser = await puppeteerExtra.default.launch({
       headless: true,
@@ -429,7 +429,7 @@ app.post('/api/claude-setup/browser-magic-link', express.json(), async (req, res
     await page.setViewport({ width: 1280, height: 800 });
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
-    // Open the magic link - this should redirect through Claude login
+    // Step 1: Open the magic link to get the verification code
     console.log('[BrowserAuth] Navigating to magic link...');
     await page.goto(magicLink, { waitUntil: 'networkidle2', timeout: 60000 });
 
@@ -444,103 +444,170 @@ app.post('/api/claude-setup/browser-magic-link', express.json(), async (req, res
       cfAttempts++;
     }
 
-    // Wait for page to fully load and redirect
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
-    let finalUrl = page.url();
-    console.log('[BrowserAuth] Current URL after magic link:', finalUrl);
+    // Take screenshot of magic link page
+    const magicScreenshot = await page.screenshot({ encoding: 'base64' });
+    writeFileSync(join(__dirname, '../public/magic-link-result.png'), Buffer.from(magicScreenshot, 'base64'));
 
-    // Take screenshot
-    const screenshot = await page.screenshot({ encoding: 'base64' });
-    const screenshotPath = join(__dirname, '../public/magic-link-result.png');
-    writeFileSync(screenshotPath, Buffer.from(screenshot, 'base64'));
+    // Extract the verification code (6-digit number)
+    const pageText = await page.evaluate(() => document.body.innerText);
+    console.log('[BrowserAuth] Magic link page text:', pageText.substring(0, 300));
 
-    // Check if we're on the console.anthropic.com callback page with a code
-    let authCode: string | null = null;
-
-    if (finalUrl.includes('console.anthropic.com') && finalUrl.includes('callback')) {
-      console.log('[BrowserAuth] On console callback page, extracting code...');
-
-      // Try to extract the code from the page content
-      const pageText = await page.evaluate(() => document.body.innerText);
-      console.log('[BrowserAuth] Page text:', pageText.substring(0, 500));
-
-      // Look for the authorization code - it's usually displayed on the page
-      // The code is typically a long alphanumeric string
-      const codeMatch = pageText.match(/([A-Za-z0-9_-]{40,})/);
-      if (codeMatch) {
-        authCode = codeMatch[1];
-        console.log('[BrowserAuth] Found auth code:', authCode.substring(0, 20) + '...');
-      }
-
-      // Also try to find it in a code/pre element or input
-      if (!authCode) {
-        authCode = await page.evaluate(() => {
-          // Check for code in pre/code elements
-          const codeEl = document.querySelector('pre, code, .code, [class*="code"]');
-          if (codeEl && codeEl.textContent) {
-            const match = codeEl.textContent.match(/([A-Za-z0-9_-]{40,})/);
-            if (match) return match[1];
-          }
-          // Check for code in input elements
-          const input = document.querySelector('input[readonly], input[type="text"]') as HTMLInputElement;
-          if (input && input.value && input.value.length > 40) {
-            return input.value;
-          }
-          return null;
-        });
-      }
+    const verificationCodeMatch = pageText.match(/(\d{6})/);
+    if (!verificationCodeMatch) {
+      await browser.close();
+      return res.status(500).json({
+        error: 'Could not find verification code on magic link page',
+        screenshotUrl: '/magic-link-result.png',
+        pageText: pageText.substring(0, 500),
+      });
     }
 
-    // If we found a code, feed it to the CLI
-    if (authCode && setupProcess && setupProcess.stdin) {
-      console.log('[BrowserAuth] Sending auth code to CLI...');
-      setupProcess.stdin.write(authCode + '\n');
+    const verificationCode = verificationCodeMatch[1];
+    console.log('[BrowserAuth] Found verification code:', verificationCode);
 
-      // Wait for the CLI to process the code
+    // Step 2: Go to the original auth URL and enter the verification code
+    console.log('[BrowserAuth] Navigating to auth URL to enter verification code...');
+    await page.goto(setupAuthUrl as string, { waitUntil: 'networkidle2', timeout: 60000 });
+
+    // Wait for Cloudflare
+    cfAttempts = 0;
+    while (cfAttempts < 30) {
+      const title = await page.title();
+      if (!title.includes('moment') && !title.includes('Cloudflare')) {
+        break;
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      cfAttempts++;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Click on "Enter verification code" link
+    console.log('[BrowserAuth] Looking for verification code option...');
+    try {
+      // Look for the link/button to enter verification code
+      const verifyLink = await page.$('a:has-text("verification code"), button:has-text("verification code"), [href*="verification"]');
+      if (verifyLink) {
+        await verifyLink.click();
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } else {
+        // Try clicking by text content
+        await page.evaluate(() => {
+          const links = Array.from(document.querySelectorAll('a, button'));
+          const verifyLink = links.find(el => el.textContent?.toLowerCase().includes('verification code'));
+          if (verifyLink) (verifyLink as HTMLElement).click();
+        });
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    } catch (e) {
+      console.log('[BrowserAuth] Could not find verification code link:', e);
+    }
+
+    // Take screenshot after clicking
+    const afterClickScreenshot = await page.screenshot({ encoding: 'base64' });
+    writeFileSync(join(__dirname, '../public/auth-verify-page.png'), Buffer.from(afterClickScreenshot, 'base64'));
+
+    // Try to find and fill in verification code input
+    console.log('[BrowserAuth] Entering verification code...');
+    try {
+      // Wait for input field
+      await page.waitForSelector('input[type="text"], input[type="number"], input[inputmode="numeric"]', { timeout: 10000 });
+
+      // Type the verification code
+      await page.type('input[type="text"], input[type="number"], input[inputmode="numeric"]', verificationCode, { delay: 100 });
+
+      // Click submit/continue button
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const submitBtn = await page.$('button[type="submit"]');
+      if (submitBtn) {
+        await submitBtn.click();
+      }
+
+      // Wait for redirect to callback
+      console.log('[BrowserAuth] Waiting for redirect to callback...');
       await new Promise(resolve => setTimeout(resolve, 10000));
 
-      // Check for token in output
+      const finalUrl = page.url();
+      console.log('[BrowserAuth] Final URL:', finalUrl);
+
+      // Take screenshot of final page
+      const finalScreenshot = await page.screenshot({ encoding: 'base64' });
+      writeFileSync(join(__dirname, '../public/auth-final.png'), Buffer.from(finalScreenshot, 'base64'));
+
+      // Check if we're on the console callback page
+      if (finalUrl.includes('console.anthropic.com') && finalUrl.includes('callback')) {
+        console.log('[BrowserAuth] On callback page, extracting auth code...');
+
+        const callbackText = await page.evaluate(() => document.body.innerText);
+        console.log('[BrowserAuth] Callback page text:', callbackText.substring(0, 500));
+
+        // Extract the auth code (long alphanumeric string)
+        const authCodeMatch = callbackText.match(/([A-Za-z0-9_-]{40,})/);
+        if (authCodeMatch) {
+          const authCode = authCodeMatch[1];
+          console.log('[BrowserAuth] Found auth code:', authCode.substring(0, 20) + '...');
+
+          // Feed the auth code to the CLI
+          if (setupProcess && setupProcess.stdin) {
+            console.log('[BrowserAuth] Sending auth code to CLI...');
+            setupProcess.stdin.write(authCode + '\n');
+
+            // Wait for CLI to process
+            await new Promise(resolve => setTimeout(resolve, 10000));
+
+            // Check for token
+            const tokenMatch = setupOutput.match(/sk-ant-oat[a-zA-Z0-9_-]+/);
+            if (tokenMatch) {
+              setupToken = tokenMatch[0];
+              process.env.CLAUDE_CODE_OAUTH_TOKEN = setupToken;
+
+              await browser.close();
+
+              return res.json({
+                status: 'success',
+                token: setupToken,
+                message: 'Token captured! OAuth complete.',
+                hint: 'Test with POST /api/run-agent',
+              });
+            }
+          }
+        }
+      }
+
+      await browser.close();
+
+      // Check for token one more time
       const tokenMatch = setupOutput.match(/sk-ant-oat[a-zA-Z0-9_-]+/);
       if (tokenMatch) {
         setupToken = tokenMatch[0];
         process.env.CLAUDE_CODE_OAUTH_TOKEN = setupToken;
 
-        await browser.close();
-
         return res.json({
           status: 'success',
           token: setupToken,
-          message: 'Token captured! It has been set in the environment.',
+          message: 'Token captured!',
           hint: 'Test with POST /api/run-agent',
         });
       }
-    }
 
-    await browser.close();
-
-    // Check for token one more time
-    const tokenMatch = setupOutput.match(/sk-ant-oat[a-zA-Z0-9_-]+/);
-    if (tokenMatch) {
-      setupToken = tokenMatch[0];
-      process.env.CLAUDE_CODE_OAUTH_TOKEN = setupToken;
-
-      res.json({
-        status: 'success',
-        token: setupToken,
-        message: 'Token captured! It has been set in the environment.',
-        hint: 'Test with POST /api/run-agent',
-      });
-    } else {
       res.json({
         status: 'pending',
+        verificationCode,
         finalUrl,
-        authCodeFound: !!authCode,
-        screenshotUrl: '/magic-link-result.png',
-        message: authCode
-          ? 'Auth code found and sent to CLI. Check /api/claude-setup/status for token.'
-          : 'Magic link opened but no auth code found. Check screenshot.',
+        screenshotUrl: '/auth-final.png',
+        message: 'Verification code entered. Check screenshots for status.',
         setupOutput: setupOutput.slice(-500),
+      });
+
+    } catch (e) {
+      await browser.close();
+      res.status(500).json({
+        error: 'Failed to enter verification code',
+        details: String(e),
+        verificationCode,
+        screenshotUrl: '/auth-verify-page.png',
       });
     }
   } catch (error) {
