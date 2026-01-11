@@ -493,11 +493,18 @@ app.post('/api/claude-setup/browser-magic-link', express.json(), async (req, res
 
           // Feed the auth code to the CLI
           if (setupProcess && setupProcess.stdin) {
-            console.log('[BrowserAuth] Sending auth code to CLI...');
-            setupProcess.stdin.write(authCode + '\n');
+            console.log('[BrowserAuth] Sending auth code to CLI:', authCode);
+            // Use \r\n for proper line ending and flush
+            const written = setupProcess.stdin.write(authCode + '\r\n');
+            console.log('[BrowserAuth] Write returned:', written);
+
+            // Ensure flush
+            if (!written) {
+              await new Promise(resolve => setupProcess!.stdin!.once('drain', resolve));
+            }
 
             // Wait for CLI to process
-            await new Promise(resolve => setTimeout(resolve, 10000));
+            await new Promise(resolve => setTimeout(resolve, 15000));
 
             // Check for token
             const tokenMatch = setupOutput.match(/sk-ant-oat[a-zA-Z0-9_-]+/);
@@ -663,11 +670,18 @@ app.post('/api/claude-setup/browser-magic-link', express.json(), async (req, res
 
           // Feed the auth code to the CLI
           if (setupProcess && setupProcess.stdin) {
-            console.log('[BrowserAuth] Sending auth code to CLI...');
-            setupProcess.stdin.write(authCode + '\n');
+            console.log('[BrowserAuth] Sending auth code to CLI:', authCode);
+            // Use \r\n for proper line ending and flush
+            const written = setupProcess.stdin.write(authCode + '\r\n');
+            console.log('[BrowserAuth] Write returned:', written);
+
+            // Ensure flush
+            if (!written) {
+              await new Promise(resolve => setupProcess!.stdin!.once('drain', resolve));
+            }
 
             // Wait for CLI to process
-            await new Promise(resolve => setTimeout(resolve, 10000));
+            await new Promise(resolve => setTimeout(resolve, 15000));
 
             // Check for token
             const tokenMatch = setupOutput.match(/sk-ant-oat[a-zA-Z0-9_-]+/);
