@@ -1,10 +1,11 @@
 /**
  * Claude Code Runner
  * Runs Claude Code CLI for agent tasks using Pro subscription
+ * NOTE: This only works locally where stdin can be inherited
+ * For server/Docker environments, use API mode instead (USE_CLAUDE_CODE=false)
  */
 
 import { spawn } from 'child_process';
-import { join } from 'path';
 
 // Pre-warm flag to avoid repeated cold starts
 let preWarmed = false;
@@ -73,28 +74,26 @@ export async function runClaudeCode(
     console.log(`[ClaudeRunner] Token preview: ${hasToken ? process.env.CLAUDE_CODE_OAUTH_TOKEN?.substring(0, 20) + '...' : 'none'}`);
     console.log(`[ClaudeRunner] Prompt: ${prompt.substring(0, 100)}...`);
 
+    // NOTE: stdin must be inherited for Claude CLI to work
+    // This means CLI mode only works locally, not in Docker/server environments
     const child = spawn('claude', args, {
       cwd: workingDir,
       env: {
         ...process.env,
-        // Disable interactive features
         CI: 'true',
-        // Use OAuth token from setup-token command
         CLAUDE_CODE_OAUTH_TOKEN: process.env.CLAUDE_CODE_OAUTH_TOKEN || '',
       },
-      // IMPORTANT: stdin must be inherited or Claude CLI hangs
-      // It checks for TTY on stdin before proceeding
       stdio: ['inherit', 'pipe', 'pipe'],
     });
 
     let stdout = '';
     let stderr = '';
 
-    child.stdout.on('data', (data) => {
+    child.stdout?.on('data', (data) => {
       stdout += data.toString();
     });
 
-    child.stderr.on('data', (data) => {
+    child.stderr?.on('data', (data) => {
       stderr += data.toString();
     });
 

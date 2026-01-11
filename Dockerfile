@@ -3,7 +3,7 @@
 
 FROM node:20-slim
 
-# Install dependencies for Claude CLI
+# Install dependencies
 RUN apt-get update && apt-get install -y \
     git \
     curl \
