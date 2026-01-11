@@ -23,6 +23,7 @@ interface AgentContext {
   taskId?: string;
   slackChannelId?: string;
   slackUserId?: string;
+  isSlackReply?: boolean;
 }
 
 export class AgentOrchestrator {

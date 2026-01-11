@@ -27,15 +27,79 @@ export class SlackService {
   private token: string | null = null;
   private defaultChannelId: string | null = null;
 
+  // Channel-to-task mapping for routing messages
+  private channelTaskMap: Map<string, { taskId: string; agentName: string }> = new Map();
+
+  // Track bot user ID to filter out bot messages
+  private botUserId: string | null = null;
+
   constructor() {
     this.token = process.env.SLACK_BOT_TOKEN || null;
     this.defaultChannelId = process.env.SLACK_CHANNEL_ID || null;
 
     if (this.token) {
       console.log('[Slack] Service initialized');
+      // Get bot user ID on startup
+      this.getBotUserId().catch(() => {});
     } else {
       console.log('[Slack] No SLACK_BOT_TOKEN, Slack features disabled');
     }
+  }
+
+  /**
+   * Get the bot's user ID from Slack
+   */
+  private async getBotUserId(): Promise<string | null> {
+    if (this.botUserId) return this.botUserId;
+    if (!this.token) return null;
+
+    try {
+      const response = await fetch('https://slack.com/api/auth.test', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      const data = await response.json() as { ok: boolean; user_id?: string };
+      if (data.ok && data.user_id) {
+        this.botUserId = data.user_id;
+        console.log('[Slack] Bot user ID:', this.botUserId);
+        return this.botUserId;
+      }
+    } catch (error) {
+      console.error('[Slack] Failed to get bot user ID:', error);
+    }
+    return null;
+  }
+
+  /**
+   * Check if a message is from the bot itself
+   */
+  isBotMessage(userId: string): boolean {
+    return userId === this.botUserId;
+  }
+
+  /**
+   * Register a channel-task mapping
+   */
+  registerChannel(channelId: string, taskId: string, agentName: string): void {
+    this.channelTaskMap.set(channelId, { taskId, agentName });
+    console.log(`[Slack] Registered channel ${channelId} -> task ${taskId} (${agentName})`);
+  }
+
+  /**
+   * Get task info for a channel
+   */
+  getTaskForChannel(channelId: string): { taskId: string; agentName: string } | null {
+    return this.channelTaskMap.get(channelId) || null;
+  }
+
+  /**
+   * Unregister a channel mapping (when task completes)
+   */
+  unregisterChannel(channelId: string): void {
+    this.channelTaskMap.delete(channelId);
   }
 
   isEnabled(): boolean {
@@ -70,6 +134,10 @@ export class SlackService {
         if (createResponse.error === 'name_taken') {
           console.log(`[Slack] Channel ${channelName} already exists`);
           const existingChannel = await this.findChannel(channelName);
+          // Register mapping for existing channel too
+          if (existingChannel) {
+            this.registerChannel(existingChannel.id, taskId, agentName);
+          }
           return existingChannel;
         }
         console.error('[Slack] Failed to create channel:', createResponse.error);
@@ -78,6 +146,9 @@ export class SlackService {
 
       const channel = createResponse.channel as SlackChannel;
       console.log(`[Slack] Created channel: #${channelName}`);
+
+      // Register channel-task mapping for message routing
+      this.registerChannel(channel.id, taskId, agentName);
 
       // Invite the user who started the task
       if (startedByUserId) {
@@ -298,7 +369,7 @@ export class SlackService {
    */
   private userCache: Map<string, string> = new Map();
 
-  private async getUserName(userId: string): Promise<string> {
+  async getUserName(userId: string): Promise<string> {
     if (this.userCache.has(userId)) {
       return this.userCache.get(userId)!;
     }

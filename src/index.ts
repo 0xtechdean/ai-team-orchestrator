@@ -12,6 +12,8 @@ import { preWarmClaude } from './claude-runner';
 import { setOrchestrator } from './controllers/orchestration.controller';
 import { RegisterRoutes } from './generated/routes';
 import { AgentOrchestrator } from './orchestrator';
+import { slackService } from './slack';
+import { taskDb } from './taskdb';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -1388,6 +1390,156 @@ app.get('/api/claude-setup/debug', async (req, res) => {
   }
 
   res.json(result);
+});
+
+// ============== Slack Events API ==============
+
+// Track processed events to avoid duplicates (Slack may retry)
+const processedEvents = new Set<string>();
+
+// Clean up old events periodically (keep last 1000)
+setInterval(() => {
+  if (processedEvents.size > 1000) {
+    const eventsArray = Array.from(processedEvents);
+    eventsArray.slice(0, eventsArray.length - 500).forEach(e => processedEvents.delete(e));
+  }
+}, 60000);
+
+// Slack Events API endpoint - receives messages from users in task channels
+app.post('/api/slack/events', express.json(), async (req, res) => {
+  const body = req.body;
+
+  // URL Verification challenge (required when setting up Slack Events)
+  if (body.type === 'url_verification') {
+    console.log('[Slack Events] URL verification challenge received');
+    return res.json({ challenge: body.challenge });
+  }
+
+  // Acknowledge immediately to avoid Slack retries (3 second timeout)
+  res.status(200).send();
+
+  // Handle event callbacks
+  if (body.type === 'event_callback') {
+    const event = body.event;
+    const eventId = body.event_id;
+
+    // Deduplicate events
+    if (processedEvents.has(eventId)) {
+      console.log('[Slack Events] Duplicate event ignored:', eventId);
+      return;
+    }
+    processedEvents.add(eventId);
+
+    // Only handle message events
+    if (event.type !== 'message') {
+      console.log('[Slack Events] Ignoring non-message event:', event.type);
+      return;
+    }
+
+    // Skip bot messages, edited messages, and subtypes
+    if (event.bot_id || event.subtype || slackService.isBotMessage(event.user)) {
+      console.log('[Slack Events] Skipping bot/subtype message');
+      return;
+    }
+
+    const channelId = event.channel;
+    const messageText = event.text;
+    const userId = event.user;
+
+    console.log(`[Slack Events] Message from ${userId} in ${channelId}: ${messageText?.substring(0, 50)}...`);
+
+    // Find the task associated with this channel
+    const taskInfo = slackService.getTaskForChannel(channelId);
+    if (!taskInfo) {
+      console.log('[Slack Events] No task found for channel:', channelId);
+      return;
+    }
+
+    const { taskId, agentName } = taskInfo;
+    console.log(`[Slack Events] Routing to ${agentName} for task ${taskId}`);
+
+    // Get user name for context
+    const userName = await slackService.getUserName(userId);
+
+    // Get task details
+    const task = await taskDb.getTask(taskId);
+    if (!task) {
+      console.error('[Slack Events] Task not found:', taskId);
+      return;
+    }
+
+    // Get conversation context (recent messages)
+    const conversationContext = await slackService.getChannelContext(channelId, 5);
+
+    // Build prompt for agent including the user message
+    const agentPrompt = `You are responding to a message from a team member in your Slack task channel.
+
+**Task:** ${task.title}
+${task.description ? `**Description:** ${task.description}` : ''}
+**Status:** ${task.status}
+
+${conversationContext}
+
+**New message from ${userName}:**
+> ${messageText}
+
+---
+Respond helpfully and concisely to ${userName}'s message. If they're asking about progress, give an update. If they're providing context or instructions, acknowledge and incorporate them. Keep your response brief and conversational (1-3 paragraphs max).`;
+
+    try {
+      // Post a "thinking" indicator
+      await slackService.postMessage(channelId, `_Thinking about ${userName}'s question..._`);
+
+      // Run the agent with the message context
+      const response = await orchestrator.runAgent(
+        agentName,
+        agentPrompt,
+        { taskId, slackChannelId: channelId, isSlackReply: true }
+      );
+
+      // Post agent response to channel
+      await slackService.postMessage(channelId, response);
+
+      // Log the interaction as a trace
+      await taskDb.logTrace(taskId, agentName, 'slack_reply', `Reply to ${userName}: ${messageText?.substring(0, 100)}`, {
+        userId,
+        userName,
+        userMessage: messageText,
+        agentResponse: response.substring(0, 500)
+      });
+
+      console.log(`[Slack Events] Agent response sent to channel ${channelId}`);
+
+    } catch (error) {
+      console.error('[Slack Events] Agent error:', error);
+      await slackService.postMessage(
+        channelId,
+        `Sorry ${userName}, I encountered an error processing your request. Please try again or contact the team.`
+      );
+    }
+  }
+});
+
+// Get Slack integration info
+app.get('/api/slack/info', async (req, res) => {
+  res.json({
+    enabled: slackService.isEnabled(),
+    eventsEndpoint: '/api/slack/events',
+    instructions: [
+      '1. Go to https://api.slack.com/apps and select your app',
+      '2. Enable Event Subscriptions',
+      '3. Set Request URL to: https://YOUR_DOMAIN/api/slack/events',
+      '4. Subscribe to bot events: message.channels, message.groups',
+      '5. Reinstall app to your workspace',
+    ],
+    requiredScopes: [
+      'channels:history',
+      'channels:read',
+      'channels:join',
+      'chat:write',
+      'users:read',
+    ]
+  });
 });
 
 // Serve dashboard

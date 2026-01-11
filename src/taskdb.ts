@@ -31,7 +31,7 @@ export interface Trace {
   id: string;
   taskId: string;
   agentName: string;
-  eventType: 'start' | 'tool_call' | 'llm_call' | 'message' | 'error' | 'complete';
+  eventType: 'start' | 'tool_call' | 'llm_call' | 'message' | 'error' | 'complete' | 'slack_reply';
   content: string;
   metadata?: Record<string, unknown>;
   tokens?: number;
