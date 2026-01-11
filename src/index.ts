@@ -469,8 +469,8 @@ app.post('/api/claude-setup/browser-magic-link', express.json(), async (req, res
         if (authBtn) authBtn.click();
       });
 
-      // Wait for redirect to callback
-      await new Promise(resolve => setTimeout(resolve, 30000));
+      // Wait for redirect to callback (10 min)
+      await new Promise(resolve => setTimeout(resolve, 600000));
 
       const finalUrl = magicPage.url();
       console.log('[BrowserAuth] Final URL after authorize:', finalUrl);
@@ -506,8 +506,8 @@ app.post('/api/claude-setup/browser-magic-link', express.json(), async (req, res
             // Send code with just newline
             setupProcess.stdin.write(authCode + '\n');
 
-            // Wait for CLI to process
-            await new Promise(resolve => setTimeout(resolve, 60000));
+            // Wait for CLI to process (10 min)
+            await new Promise(resolve => setTimeout(resolve, 600000));
 
             // Check for token
             const tokenMatch = setupOutput.match(/sk-ant-oat[a-zA-Z0-9_-]+/);
@@ -685,8 +685,8 @@ app.post('/api/claude-setup/browser-magic-link', express.json(), async (req, res
             // Send code with just newline
             setupProcess.stdin.write(authCode + '\n');
 
-            // Wait for CLI to process
-            await new Promise(resolve => setTimeout(resolve, 60000));
+            // Wait for CLI to process (10 min)
+            await new Promise(resolve => setTimeout(resolve, 600000));
 
             // Check for token
             const tokenMatch = setupOutput.match(/sk-ant-oat[a-zA-Z0-9_-]+/);
@@ -949,7 +949,7 @@ app.post('/api/claude-setup/complete-with-code', express.json(), async (req, res
 
   // Create expect script that sends the code
   const expectScript = `#!/usr/bin/expect -f
-set timeout 300
+set timeout 600
 spawn claude setup-token
 expect {
   "Paste code" {
@@ -1004,7 +1004,7 @@ expect {
       setTimeout(() => {
         proc.kill();
         resolve({ success: false, output: output + '\nTIMEOUT' });
-      }, 300000);  // 5 minute timeout
+      }, 600000);  // 10 minute timeout
     });
 
     // Clean up
