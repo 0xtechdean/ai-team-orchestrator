@@ -1589,6 +1589,89 @@ app.get('/api/slack/info', async (req, res) => {
   });
 });
 
+// ============== File Viewer Routes ==============
+
+// View a file's contents (for sharing file links)
+app.get('/api/files/view', async (req, res) => {
+  try {
+    const { path: filePath } = req.query;
+    if (!filePath || typeof filePath !== 'string') {
+      return res.status(400).json({ error: 'path query parameter is required' });
+    }
+
+    const { readFileSync, existsSync } = await import('fs');
+    const { resolve, relative, basename, extname } = await import('path');
+
+    // Security: Only allow files within /app directory
+    const absolutePath = resolve(filePath);
+    if (!absolutePath.startsWith('/app/')) {
+      return res.status(403).json({ error: 'Access denied - only /app files allowed' });
+    }
+
+    if (!existsSync(absolutePath)) {
+      return res.status(404).json({ error: 'File not found', path: absolutePath });
+    }
+
+    const content = readFileSync(absolutePath, 'utf-8');
+    const ext = extname(absolutePath).toLowerCase();
+
+    // Return as HTML for better viewing
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <title>${basename(absolutePath)}</title>
+  <style>
+    body { font-family: 'JetBrains Mono', monospace; background: #1a1a1a; color: #e0e0e0; padding: 2rem; }
+    pre { background: #2d2d2d; padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    h1 { color: #00bcd4; font-size: 1.2rem; }
+    .meta { color: #888; font-size: 0.9rem; margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>${basename(absolutePath)}</h1>
+  <div class="meta">Path: ${absolutePath} | ${content.split('\n').length} lines</div>
+  <pre>${content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+</body>
+</html>`;
+
+    res.type('html').send(html);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to read file', details: String(error) });
+  }
+});
+
+// List files in a directory
+app.get('/api/files/list', async (req, res) => {
+  try {
+    const { path: dirPath } = req.query;
+    const targetPath = (dirPath as string) || '/app';
+
+    const { readdirSync, statSync } = await import('fs');
+    const { resolve, join } = await import('path');
+
+    const absolutePath = resolve(targetPath);
+    if (!absolutePath.startsWith('/app')) {
+      return res.status(403).json({ error: 'Access denied - only /app files allowed' });
+    }
+
+    const files = readdirSync(absolutePath).map(name => {
+      const fullPath = join(absolutePath, name);
+      const stat = statSync(fullPath);
+      return {
+        name,
+        path: fullPath,
+        isDirectory: stat.isDirectory(),
+        size: stat.size,
+        modified: stat.mtime,
+      };
+    });
+
+    res.json({ path: absolutePath, files });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to list directory', details: String(error) });
+  }
+});
+
 // Serve dashboard
 app.get('/', (req, res) => {
   res.sendFile(join(__dirname, '../public/index.html'));
