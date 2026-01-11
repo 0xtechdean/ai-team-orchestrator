@@ -255,6 +255,82 @@
       flex-direction: column;
     }
 
+    /* ============ FILTER BAR ============ */
+    .filter-bar {
+      padding: 0.75rem 1rem;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .filter-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+    }
+
+    .filter-input {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.375rem 0.75rem;
+      font-family: inherit;
+      font-size: 12px;
+      min-width: 150px;
+    }
+
+    .filter-input:focus {
+      outline: none;
+      border-color: var(--accent-blue);
+    }
+
+    .filter-select {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.375rem 0.75rem;
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .filter-select:focus {
+      outline: none;
+      border-color: var(--accent-blue);
+    }
+
+    .filter-clear {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 0.375rem 0.75rem;
+      font-family: inherit;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .filter-clear:hover {
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+    }
+
+    .filter-count {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-left: auto;
+    }
+
     .column-header {
       padding: 0.75rem 1rem;
       border-bottom: 1px solid var(--border-color);
@@ -1293,6 +1369,30 @@
     <div class="content">
       <!-- TASKS VIEW -->
       <div class="view-container active" id="view-tasks">
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+          <div class="filter-group">
+            <span class="filter-label">Search:</span>
+            <input type="text" class="filter-input" id="filter-search" placeholder="Task title or description...">
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">Agent:</span>
+            <select class="filter-select" id="filter-agent">
+              <option value="">All Agents</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">Priority:</span>
+            <select class="filter-select" id="filter-priority">
+              <option value="">All</option>
+              <option value="P0">P0 - Critical</option>
+              <option value="P1">P1 - High</option>
+              <option value="P2">P2 - Normal</option>
+            </select>
+          </div>
+          <button class="filter-clear" onclick="clearFilters()">Clear Filters</button>
+          <span class="filter-count" id="filter-count">Showing all tasks</span>
+        </div>
         <div class="kanban" id="kanban">
           <div class="column" data-status="backlog">
             <div class="column-header">
@@ -1846,11 +1946,99 @@
       }
     }
 
+    // Filter state
+    let currentFilters = {
+      search: '',
+      agent: '',
+      priority: ''
+    };
+
+    function applyFilters(taskList) {
+      return taskList.filter(task => {
+        // Search filter (title + description)
+        if (currentFilters.search) {
+          const searchLower = currentFilters.search.toLowerCase();
+          const titleMatch = task.title?.toLowerCase().includes(searchLower);
+          const descMatch = task.description?.toLowerCase().includes(searchLower);
+          if (!titleMatch && !descMatch) return false;
+        }
+
+        // Agent filter
+        if (currentFilters.agent && task.owner !== currentFilters.agent) {
+          return false;
+        }
+
+        // Priority filter
+        if (currentFilters.priority && task.priority !== currentFilters.priority) {
+          return false;
+        }
+
+        return true;
+      });
+    }
+
+    function updateFilterCount(filtered, total) {
+      const countEl = document.getElementById('filter-count');
+      if (filtered === total) {
+        countEl.textContent = `Showing all ${total} tasks`;
+      } else {
+        countEl.textContent = `Showing ${filtered} of ${total} tasks`;
+      }
+    }
+
+    function populateAgentFilter() {
+      const agentSelect = document.getElementById('filter-agent');
+      const agents = [...new Set(tasks.map(t => t.owner).filter(Boolean))].sort();
+
+      // Keep first option
+      agentSelect.innerHTML = '<option value="">All Agents</option>';
+      agents.forEach(agent => {
+        agentSelect.innerHTML += `<option value="${agent}">${agent}</option>`;
+      });
+
+      // Restore selection if still valid
+      if (currentFilters.agent && agents.includes(currentFilters.agent)) {
+        agentSelect.value = currentFilters.agent;
+      }
+    }
+
+    function clearFilters() {
+      currentFilters = { search: '', agent: '', priority: '' };
+      document.getElementById('filter-search').value = '';
+      document.getElementById('filter-agent').value = '';
+      document.getElementById('filter-priority').value = '';
+      renderTasks();
+    }
+
+    function setupFilterListeners() {
+      document.getElementById('filter-search').addEventListener('input', (e) => {
+        currentFilters.search = e.target.value;
+        renderTasks();
+      });
+
+      document.getElementById('filter-agent').addEventListener('change', (e) => {
+        currentFilters.agent = e.target.value;
+        renderTasks();
+      });
+
+      document.getElementById('filter-priority').addEventListener('change', (e) => {
+        currentFilters.priority = e.target.value;
+        renderTasks();
+      });
+    }
+
     function renderTasks() {
+      // Populate agent dropdown with current agents
+      populateAgentFilter();
+
+      // Apply filters
+      const filteredTasks = applyFilters(tasks);
+      updateFilterCount(filteredTasks.length, tasks.length);
+
       const statuses = ['backlog', 'ready', 'in_progress', 'done'];
       statuses.forEach(status => {
         const container = document.getElementById(`tasks-${status}`);
-        const statusTasks = tasks.filter(t => t.status === status);
+        const statusTasks = filteredTasks.filter(t => t.status === status);
         document.getElementById(`count-${status}`).textContent = statusTasks.length;
 
         if (statusTasks.length === 0) {
@@ -2389,6 +2577,7 @@
     // ============ INITIALIZE ============
     fetchAgents();
     fetchTasks();
+    setupFilterListeners();
     setInterval(fetchTasks, 30000);
     // Slow refresh for global views
     setInterval(() => {
