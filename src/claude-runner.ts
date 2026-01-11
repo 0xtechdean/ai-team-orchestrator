@@ -100,15 +100,24 @@ export async function runClaudeCode(
     // Use OAuth token for CLI mode (Pro subscription)
     console.log(`[ClaudeRunner] Using OAuth token for CLI mode`);
 
+    // Build env without API key when OAuth token is present (to prevent "Invalid API key" errors)
+    const runEnv: Record<string, string> = {
+      ...process.env as Record<string, string>,
+      CI: 'true',
+      TERM: 'xterm-256color',
+    };
+
+    // If OAuth token is available, use it and remove any API key to prevent conflicts
+    if (process.env.CLAUDE_CODE_OAUTH_TOKEN) {
+      runEnv.CLAUDE_CODE_OAUTH_TOKEN = process.env.CLAUDE_CODE_OAUTH_TOKEN;
+      // Remove API key to prevent Claude CLI from trying to use it
+      delete runEnv.ANTHROPIC_API_KEY;
+      console.log('[ClaudeRunner] Using OAuth token (API key removed from env)');
+    }
+
     const child = spawn('unbuffer', ['bash', '-c', bashCmd], {
       cwd: workingDir,
-      env: {
-        ...process.env,
-        CI: 'true',
-        TERM: 'xterm-256color',
-        // Use OAuth token for Pro subscription
-        CLAUDE_CODE_OAUTH_TOKEN: process.env.CLAUDE_CODE_OAUTH_TOKEN || '',
-      },
+      env: runEnv,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 

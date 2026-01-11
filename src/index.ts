@@ -1098,7 +1098,7 @@ sleep 2
 
   // Make it executable
   const { execSync } = await import('child_process');
-  execSync(\`chmod +x \${expectPath}\`);
+  execSync(`chmod +x ${expectPath}`);
 
   console.log('[Expect] Running expect script with code:', code.substring(0, 30) + '...');
 
@@ -1131,7 +1131,7 @@ sleep 2
 
       setTimeout(() => {
         proc.kill();
-        resolve({ success: false, output: output + '\\nTIMEOUT' });
+        resolve({ success: false, output: output + '\nTIMEOUT' });
       }, 180000);  // 3 minute timeout
     });
 
