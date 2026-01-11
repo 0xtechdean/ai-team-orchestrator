@@ -26,7 +26,6 @@
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
     "ioredis": "^5.4.2",
-    "mem0ai": "^1.0.15",
     "pg": "^8.13.1"
   },
   "devDependencies": {

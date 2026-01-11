@@ -3,8 +3,6 @@
  * Enables agents to share memories and learn from each other
  */
 
-import { MemoryClient } from 'mem0ai';
-
 export interface AgentMemory {
   id: string;
   memory: string;
@@ -13,16 +11,19 @@ export interface AgentMemory {
   metadata?: Record<string, unknown>;
 }
 
+// Use REST API directly since mem0ai npm package requires browser environment
+const MEM0_API_BASE = 'https://api.mem0.ai/v1';
+
 export class MemoryService {
-  private client: MemoryClient | null = null;
+  private apiKey: string | null = null;
   private projectId: string;
 
   constructor(projectId: string = 'ai-team') {
     this.projectId = projectId;
 
     if (process.env.MEM0_API_KEY) {
-      this.client = new MemoryClient({ apiKey: process.env.MEM0_API_KEY });
-      console.log('[Memory] Mem0 client initialized');
+      this.apiKey = process.env.MEM0_API_KEY;
+      console.log('[Memory] Mem0 service initialized (REST API)');
     } else {
       console.log('[Memory] No MEM0_API_KEY, memory features disabled');
     }
@@ -34,11 +35,36 @@ export class MemoryService {
       : this.projectId;
   }
 
-  async addMemory(content: string, agentName: string, metadata?: Record<string, unknown>): Promise<void> {
-    if (!this.client) return;
+  private async apiRequest(endpoint: string, method: string, body?: unknown): Promise<unknown> {
+    if (!this.apiKey) return null;
 
     try {
-      await this.client.add(content, {
+      const response = await fetch(`${MEM0_API_BASE}${endpoint}`, {
+        method,
+        headers: {
+          'Authorization': `Token ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Mem0 API error: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('[Memory] API request failed:', error);
+      return null;
+    }
+  }
+
+  async addMemory(content: string, agentName: string, metadata?: Record<string, unknown>): Promise<void> {
+    if (!this.apiKey) return;
+
+    try {
+      await this.apiRequest('/memories/', 'POST', {
+        messages: [{ role: 'user', content }],
         user_id: this.getUserId(agentName),
         metadata: {
           agent: agentName,
@@ -54,15 +80,20 @@ export class MemoryService {
   }
 
   async searchMemories(query: string, agentName?: string, limit: number = 10): Promise<AgentMemory[]> {
-    if (!this.client) return [];
+    if (!this.apiKey) return [];
 
     try {
-      const results = await this.client.search(query, {
+      const result = await this.apiRequest('/memories/search/', 'POST', {
+        query,
         user_id: this.getUserId(agentName),
         limit,
       });
 
-      return (results as Array<{ id: string; memory: string; metadata?: Record<string, unknown> }>).map(r => ({
+      if (!result || !Array.isArray((result as { results?: unknown[] }).results)) {
+        return [];
+      }
+
+      return ((result as { results: Array<{ id: string; memory: string; metadata?: Record<string, unknown> }> }).results).map(r => ({
         id: r.id,
         memory: r.memory,
         agent: r.metadata?.agent as string | undefined,
@@ -75,15 +106,17 @@ export class MemoryService {
   }
 
   async getRecentMemories(agentName?: string, limit: number = 20): Promise<AgentMemory[]> {
-    if (!this.client) return [];
+    if (!this.apiKey) return [];
 
     try {
-      const results = await this.client.getAll({
-        user_id: this.getUserId(agentName),
-        limit,
-      });
+      const userId = this.getUserId(agentName);
+      const result = await this.apiRequest(`/memories/?user_id=${encodeURIComponent(userId)}&limit=${limit}`, 'GET');
 
-      return (results as Array<{ id: string; memory: string; metadata?: Record<string, unknown> }>).map(r => ({
+      if (!result || !Array.isArray((result as { results?: unknown[] }).results)) {
+        return [];
+      }
+
+      return ((result as { results: Array<{ id: string; memory: string; metadata?: Record<string, unknown> }> }).results).map(r => ({
         id: r.id,
         memory: r.memory,
         agent: r.metadata?.agent as string | undefined,
@@ -96,7 +129,7 @@ export class MemoryService {
   }
 
   async getTaskContext(agentName: string, taskTitle: string): Promise<string> {
-    if (!this.client) return '';
+    if (!this.apiKey) return '';
 
     const relevantMemories = await this.searchMemories(taskTitle, undefined, 5);
     const agentMemories = await this.getRecentMemories(agentName, 5);
@@ -116,7 +149,7 @@ export class MemoryService {
     result: string,
     learnings?: string[]
   ): Promise<void> {
-    if (!this.client) return;
+    if (!this.apiKey) return;
 
     const summary = `Completed task "${taskTitle}": ${result.substring(0, 200)}`;
     await this.addMemory(summary, agentName, {
@@ -136,7 +169,7 @@ export class MemoryService {
   }
 
   isEnabled(): boolean {
-    return this.client !== null;
+    return this.apiKey !== null;
   }
 }
 
