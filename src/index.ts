@@ -31,8 +31,12 @@ const orchestrator = new AgentOrchestrator({
 
 setOrchestrator(orchestrator);
 
-app.use('/api-docs', swaggerUi.serve, async (_req: express.Request, res: express.Response) => {
-  return res.send(swaggerUi.generateHTML(await import('../public/swagger.json')));
+app.use('/api-docs', swaggerUi.serve, async (req: express.Request, res: express.Response) => {
+  const swaggerSpec = (await import('../public/swagger.json')).default;
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3000';
+  swaggerSpec.servers = [{ url: `${protocol}://${host}` }];
+  return res.send(swaggerUi.generateHTML(swaggerSpec));
 });
 
 RegisterRoutes(app);
