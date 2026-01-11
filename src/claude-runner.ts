@@ -76,8 +76,10 @@ export async function runClaudeCode(
     // Note: prompt is added in bash command construction below, not here
 
     const hasToken = !!process.env.CLAUDE_CODE_OAUTH_TOKEN;
+    const hasApiKey = !!process.env.ANTHROPIC_API_KEY;
     console.log(`[ClaudeRunner] Running with model: ${model}`);
     console.log(`[ClaudeRunner] OAuth token present: ${hasToken}`);
+    console.log(`[ClaudeRunner] API key present: ${hasApiKey}`);
     console.log(`[ClaudeRunner] Prompt length: ${prompt.length}, using file: ${!!promptFile}`);
     console.log(`[ClaudeRunner] Prompt preview: ${prompt.substring(0, 100)}...`);
 
@@ -97,12 +99,14 @@ export async function runClaudeCode(
 
     console.log(`[ClaudeRunner] Command: ${bashCmd.substring(0, 150)}...`);
 
+    // Pass both API key and OAuth token - CLI will use whichever is valid
     const child = spawn('unbuffer', ['bash', '-c', bashCmd], {
       cwd: workingDir,
       env: {
         ...process.env,
         CI: 'true',
         TERM: 'xterm-256color',
+        ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || '',
         CLAUDE_CODE_OAUTH_TOKEN: process.env.CLAUDE_CODE_OAUTH_TOKEN || '',
       },
       stdio: ['pipe', 'pipe', 'pipe'],
