@@ -213,15 +213,14 @@ app.post('/api/claude-setup/browser-auth', express.json(), async (req, res) => {
     setupToken = '';
     setupAuthUrl = null;
 
-    // Start Claude setup-token process with unbuffer for PTY handling
-    // unbuffer -p provides a pseudo-TTY that should handle stdin
+    // Start Claude setup-token with unbuffer - we'll handle the code sending separately
     setupProcess = spawn('unbuffer', ['-p', 'claude', 'setup-token'], {
       env: {
         ...process.env,
         CI: 'true',
-        TERM: 'dumb',  // Use dumb terminal to avoid escape sequences
+        TERM: 'dumb',
         DISPLAY: '',
-        COLUMNS: '200',  // Wide terminal to avoid line wrapping
+        COLUMNS: '200',
       },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
@@ -933,6 +932,105 @@ app.post('/api/claude-setup/stop', (req, res) => {
     setupProcess = null;
   }
   res.json({ status: 'stopped' });
+});
+
+// Complete setup-token flow with expect script - provide the code and it runs to completion
+app.post('/api/claude-setup/complete-with-code', express.json(), async (req, res) => {
+  const { code } = req.body;
+
+  if (!code) {
+    return res.status(400).json({ error: 'Code is required (format: code#state)' });
+  }
+
+  const { spawn } = await import('child_process');
+  const { writeFileSync, unlinkSync, readFileSync, existsSync } = await import('fs');
+  const { homedir } = await import('os');
+  const { join } = await import('path');
+
+  // Create expect script that sends the code
+  const expectScript = `#!/usr/bin/expect -f
+set timeout 120
+spawn claude setup-token
+expect {
+  "Paste code" {
+    send "${code}\\r"
+    exp_continue
+  }
+  "successfully" {
+    puts "SUCCESS"
+  }
+  timeout {
+    puts "TIMEOUT"
+    exit 1
+  }
+  eof {
+    puts "EOF"
+  }
+}
+`;
+
+  const expectPath = '/tmp/claude-setup-complete.exp';
+  writeFileSync(expectPath, expectScript);
+
+  console.log('[Setup] Running expect script with code:', code.substring(0, 30) + '...');
+
+  try {
+    const result = await new Promise<{success: boolean, output: string}>((resolve) => {
+      let output = '';
+      const proc = spawn('expect', ['-f', expectPath], {
+        env: {
+          ...process.env,
+          CI: 'true',
+          TERM: 'dumb',
+          DISPLAY: '',
+        },
+      });
+
+      proc.stdout?.on('data', (data) => {
+        output += data.toString();
+        console.log('[Setup]', data.toString().substring(0, 200));
+      });
+      proc.stderr?.on('data', (data) => {
+        output += data.toString();
+      });
+
+      proc.on('close', (exitCode) => {
+        resolve({
+          success: exitCode === 0 || output.includes('SUCCESS'),
+          output,
+        });
+      });
+
+      setTimeout(() => {
+        proc.kill();
+        resolve({ success: false, output: output + '\nTIMEOUT' });
+      }, 90000);
+    });
+
+    // Clean up
+    try { unlinkSync(expectPath); } catch {}
+
+    // Check if token file was created
+    const tokenPath = join(homedir(), '.claude', '.oauth_token');
+    let token: string | null = null;
+    if (existsSync(tokenPath)) {
+      token = readFileSync(tokenPath, 'utf-8').trim();
+      if (token.startsWith('sk-ant-')) {
+        process.env.CLAUDE_CODE_OAUTH_TOKEN = token;
+        console.log('[Setup] Token loaded into environment');
+      }
+    }
+
+    res.json({
+      success: result.success,
+      token: token ? token.substring(0, 30) + '...' : null,
+      tokenLoaded: !!token,
+      output: result.output.substring(0, 2000),
+    });
+
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to run setup', details: String(error) });
+  }
 });
 
 // OAuth callback forwarder - forwards the callback to Claude CLI's internal server
