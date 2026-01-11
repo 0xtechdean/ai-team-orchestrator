@@ -13,6 +13,8 @@ import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
 // Use Claude Code CLI instead of API if enabled
+// Default to API mode (more reliable on servers)
+// Set USE_CLAUDE_CODE=true to use CLI with Pro subscription
 const USE_CLAUDE_CODE = process.env.USE_CLAUDE_CODE === 'true';
 
 interface AgentContext {
