@@ -82,18 +82,20 @@ export async function runClaudeCode(
     console.log(`[ClaudeRunner] Prompt preview: ${prompt.substring(0, 100)}...`);
 
     // Build the bash command with unbuffer for pseudo-TTY
-    // Use $(cat file) for prompts to avoid stdin piping issues with unbuffer
+    // Use double quotes for the outer bash -c argument to allow proper escaping
     let bashCmd: string;
+    const argsStr = claudeArgs.join(' ');
+
     if (promptFile) {
       // Long prompt: read from file using command substitution
-      bashCmd = `claude ${claudeArgs.map(a => `'${a}'`).join(' ')} "$(cat '${promptFile}')"`;
+      bashCmd = `claude ${argsStr} "$(cat '${promptFile}')"`;
     } else {
-      // Short prompt: pass directly (escape for bash)
-      const escapedPrompt = prompt.replace(/'/g, "'\\''");
-      bashCmd = `claude ${claudeArgs.map(a => `'${a}'`).join(' ')} '${escapedPrompt}'`;
+      // Short prompt: escape double quotes and pass directly
+      const escapedPrompt = prompt.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\$/g, '\\$').replace(/`/g, '\\`');
+      bashCmd = `claude ${argsStr} "${escapedPrompt}"`;
     }
 
-    console.log(`[ClaudeRunner] Command: unbuffer bash -c '${bashCmd.substring(0, 100)}...'`);
+    console.log(`[ClaudeRunner] Command: ${bashCmd.substring(0, 150)}...`);
 
     const child = spawn('unbuffer', ['bash', '-c', bashCmd], {
       cwd: workingDir,
