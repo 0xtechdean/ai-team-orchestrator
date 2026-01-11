@@ -8,6 +8,10 @@ export function setOrchestrator(orchestrator: AgentOrchestrator) {
   orchestratorInstance = orchestrator;
 }
 
+export function getOrchestrator(): AgentOrchestrator | null {
+  return orchestratorInstance;
+}
+
 interface RunAgentRequest {
   agentName: string;
   task: string;

@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Patch, Path, Post, Query, Response, Route, Tags } from 'tsoa';
 import { Task, taskDb } from '../taskdb';
 import { ErrorResponse } from '../types/api';
+import { getOrchestrator } from './orchestration.controller';
 
 interface CreateTaskRequest {
   title: string;
@@ -75,11 +76,52 @@ export class TasksController extends Controller {
     @Path() taskId: string,
     @Body() body: UpdateTaskRequest
   ): Promise<Task> {
+    // Get current task to check if status is changing to ready
+    const currentTask = await taskDb.getTask(taskId);
+
     const task = await taskDb.updateTask(taskId, body);
     if (!task) {
       this.setStatus(404);
       throw new Error('Task not found');
     }
+
+    // If task was moved to "ready" and has an owner, trigger agent execution
+    // This works for both new tasks and tasks returned to backlog and moved to ready again
+    if (body.status === 'ready' && currentTask?.status !== 'ready' && task.owner) {
+      console.log(`[TasksController] Task ${taskId} moved to ready - triggering ${task.owner} agent`);
+
+      // Update status to in_progress immediately
+      await taskDb.updateTask(taskId, {
+        status: 'in_progress',
+        startedAt: new Date().toISOString()
+      });
+
+      // Run agent asynchronously (don't wait for completion)
+      const orchestrator = getOrchestrator();
+      if (orchestrator) {
+        orchestrator.runAgent(
+          task.owner,
+          `${task.title}${task.description ? `: ${task.description}` : ''}`,
+          { taskId }
+        ).then(async (result) => {
+          // Mark task as done when agent completes
+          await taskDb.updateTask(taskId, {
+            status: 'done',
+            output: result.substring(0, 10000),
+            completedAt: new Date().toISOString()
+          });
+          console.log(`[TasksController] Task ${taskId} completed by ${task.owner}`);
+        }).catch(async (err) => {
+          // Mark task as failed - move back to backlog so it can be retried
+          await taskDb.updateTask(taskId, {
+            status: 'backlog',
+            output: `Error: ${err.message}`
+          });
+          console.error(`[TasksController] Task ${taskId} failed:`, err.message);
+        });
+      }
+    }
+
     return task;
   }
 
