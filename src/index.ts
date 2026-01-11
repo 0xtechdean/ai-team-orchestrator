@@ -955,10 +955,19 @@ app.post('/api/claude-setup/stop', (req, res) => {
     setupProcess.kill();
     setupProcess = null;
   }
-  res.json({ status: 'stopped' });
+  // Reset all state
+  setupOutput = '';
+  setupToken = '';
+  setupAuthUrl = null;
+  if (authBrowser) {
+    authBrowser.close().catch(() => {});
+    authBrowser = null;
+    authPage = null;
+  }
+  res.json({ status: 'stopped', message: 'CLI process and browser cleaned up' });
 });
 
-// Complete setup-token flow with expect script - provide the code and it runs to completion
+// Complete setup-token flow - send code to EXISTING CLI process, don't spawn new one
 app.post('/api/claude-setup/complete-with-code', express.json(), async (req, res) => {
   const { code } = req.body;
 
@@ -966,95 +975,58 @@ app.post('/api/claude-setup/complete-with-code', express.json(), async (req, res
     return res.status(400).json({ error: 'Code is required (format: code#state)' });
   }
 
-  const { spawn } = await import('child_process');
-  const { writeFileSync, unlinkSync, readFileSync, existsSync } = await import('fs');
+  const { readFileSync, existsSync } = await import('fs');
   const { homedir } = await import('os');
   const { join } = await import('path');
 
-  // Create expect script that sends the code
-  const expectScript = `#!/usr/bin/expect -f
-set timeout 600
-spawn claude setup-token
-expect {
-  "Paste code" {
-    send "${code}\\r"
-    exp_continue
-  }
-  "successfully" {
-    puts "SUCCESS"
-  }
-  timeout {
-    puts "TIMEOUT"
-    exit 1
-  }
-  eof {
-    puts "EOF"
-  }
-}
-`;
+  // Use existing setupProcess if available (from browser-auth)
+  if (setupProcess && setupProcess.stdin) {
+    console.log('[Setup] Using existing CLI process, sending code:', code.substring(0, 30) + '...');
 
-  const expectPath = '/tmp/claude-setup-complete.exp';
-  writeFileSync(expectPath, expectScript);
+    // Send code to existing CLI
+    setupProcess.stdin.write(code + '\n');
 
-  console.log('[Setup] Running expect script with code:', code.substring(0, 30) + '...');
+    // Wait for token to appear
+    let tokenFound = false;
+    for (let i = 0; i < 60; i++) {  // 60 * 2s = 2 min
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
-  try {
-    const result = await new Promise<{success: boolean, output: string}>((resolve) => {
-      let output = '';
-      const proc = spawn('expect', ['-f', expectPath], {
-        env: {
-          ...process.env,
-          CI: 'true',
-          TERM: 'dumb',
-          DISPLAY: '',
-        },
-      });
+      const tokenMatch = setupOutput.match(/sk-ant-oat[a-zA-Z0-9_-]+/);
+      if (tokenMatch) {
+        setupToken = tokenMatch[0];
+        process.env.CLAUDE_CODE_OAUTH_TOKEN = setupToken;
+        tokenFound = true;
+        console.log('[Setup] Token found from existing CLI!');
+        break;
+      }
 
-      proc.stdout?.on('data', (data) => {
-        output += data.toString();
-        console.log('[Setup]', data.toString().substring(0, 200));
-      });
-      proc.stderr?.on('data', (data) => {
-        output += data.toString();
-      });
+      if (setupOutput.includes('successfully') || setupOutput.includes('Token saved')) {
+        console.log('[Setup] CLI completed successfully');
+        break;
+      }
+    }
 
-      proc.on('close', (exitCode) => {
-        resolve({
-          success: exitCode === 0 || output.includes('SUCCESS'),
-          output,
-        });
-      });
-
-      setTimeout(() => {
-        proc.kill();
-        resolve({ success: false, output: output + '\nTIMEOUT' });
-      }, 600000);  // 10 minute timeout
-    });
-
-    // Clean up
-    try { unlinkSync(expectPath); } catch {}
-
-    // Check if token file was created
+    // Check token file
     const tokenPath = join(homedir(), '.claude', '.oauth_token');
     let token: string | null = null;
     if (existsSync(tokenPath)) {
       token = readFileSync(tokenPath, 'utf-8').trim();
-      if (token.startsWith('sk-ant-')) {
-        process.env.CLAUDE_CODE_OAUTH_TOKEN = token;
-        console.log('[Setup] Token loaded into environment');
-      }
+      process.env.CLAUDE_CODE_OAUTH_TOKEN = token;
     }
 
-    res.json({
-      success: result.success,
-      token: token ? token.substring(0, 30) + '...' : null,
-      tokenLoaded: !!token,
-      output: result.output.substring(0, 2000),
+    return res.json({
+      success: tokenFound || !!token,
+      token: token || setupToken || null,
+      tokenLoaded: !!(token || setupToken),
+      message: tokenFound ? 'Token captured from existing CLI' : 'Code sent to existing CLI',
     });
-
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to run setup', details: String(error) });
   }
+
+  // No existing process - return error (user should start browser-auth first)
+  return res.status(400).json({
+    error: 'No CLI process running. Start browser-auth first.',
+    hint: 'POST /api/claude-setup/browser-auth with email to start the flow',
+  });
 });
 
 // OAuth callback forwarder - forwards the callback to Claude CLI's internal server
