@@ -62,6 +62,11 @@ export async function runClaudeCode(
       '--dangerously-skip-permissions',
     ];
 
+    // Explicitly pass API key if available (preferred over OAuth which is IP-bound)
+    if (process.env.ANTHROPIC_API_KEY) {
+      claudeArgs.push('--api-key', process.env.ANTHROPIC_API_KEY);
+    }
+
     if (systemPrompt) {
       claudeArgs.push('--system-prompt', systemPrompt);
     }
@@ -80,6 +85,7 @@ export async function runClaudeCode(
     console.log(`[ClaudeRunner] Running with model: ${model}`);
     console.log(`[ClaudeRunner] OAuth token present: ${hasToken}`);
     console.log(`[ClaudeRunner] API key present: ${hasApiKey}`);
+    console.log(`[ClaudeRunner] Using explicit --api-key flag: ${hasApiKey}`);
     console.log(`[ClaudeRunner] Prompt length: ${prompt.length}, using file: ${!!promptFile}`);
     console.log(`[ClaudeRunner] Prompt preview: ${prompt.substring(0, 100)}...`);
 
