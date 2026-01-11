@@ -3,6 +3,8 @@
  * Creates channels for agent-task communication
  */
 
+import { taskDb } from './taskdb';
+
 interface SlackChannel {
   id: string;
   name: string;
@@ -41,8 +43,25 @@ export class SlackService {
       console.log('[Slack] Service initialized');
       // Get bot user ID on startup
       this.getBotUserId().catch(() => {});
+      // Load channel mappings from database
+      this.loadChannelMappings().catch(() => {});
     } else {
       console.log('[Slack] No SLACK_BOT_TOKEN, Slack features disabled');
+    }
+  }
+
+  /**
+   * Load channel mappings from database on startup
+   */
+  private async loadChannelMappings(): Promise<void> {
+    try {
+      const mappings = await taskDb.getAllChannelMappings();
+      for (const [channelId, info] of mappings) {
+        this.channelTaskMap.set(channelId, info);
+      }
+      console.log(`[Slack] Loaded ${mappings.size} channel mappings from database`);
+    } catch (error) {
+      console.error('[Slack] Failed to load channel mappings:', error);
     }
   }
 
@@ -81,25 +100,51 @@ export class SlackService {
   }
 
   /**
-   * Register a channel-task mapping
+   * Register a channel-task mapping (in-memory and database)
    */
-  registerChannel(channelId: string, taskId: string, agentName: string): void {
+  async registerChannel(channelId: string, taskId: string, agentName: string): Promise<void> {
     this.channelTaskMap.set(channelId, { taskId, agentName });
+    // Also persist to database
+    try {
+      await taskDb.saveChannelMapping(channelId, taskId, agentName);
+    } catch (error) {
+      console.error('[Slack] Failed to persist channel mapping:', error);
+    }
     console.log(`[Slack] Registered channel ${channelId} -> task ${taskId} (${agentName})`);
   }
 
   /**
-   * Get task info for a channel
+   * Get task info for a channel (checks in-memory first, then database)
    */
-  getTaskForChannel(channelId: string): { taskId: string; agentName: string } | null {
-    return this.channelTaskMap.get(channelId) || null;
+  async getTaskForChannel(channelId: string): Promise<{ taskId: string; agentName: string } | null> {
+    // Check in-memory cache first
+    const cached = this.channelTaskMap.get(channelId);
+    if (cached) return cached;
+
+    // Fallback to database
+    try {
+      const dbMapping = await taskDb.getChannelMapping(channelId);
+      if (dbMapping) {
+        // Cache it for future lookups
+        this.channelTaskMap.set(channelId, dbMapping);
+        return dbMapping;
+      }
+    } catch (error) {
+      console.error('[Slack] Failed to get channel mapping from DB:', error);
+    }
+    return null;
   }
 
   /**
    * Unregister a channel mapping (when task completes)
    */
-  unregisterChannel(channelId: string): void {
+  async unregisterChannel(channelId: string): Promise<void> {
     this.channelTaskMap.delete(channelId);
+    try {
+      await taskDb.deleteChannelMapping(channelId);
+    } catch (error) {
+      console.error('[Slack] Failed to delete channel mapping:', error);
+    }
   }
 
   isEnabled(): boolean {
@@ -136,7 +181,7 @@ export class SlackService {
           const existingChannel = await this.findChannel(channelName);
           // Register mapping for existing channel too
           if (existingChannel) {
-            this.registerChannel(existingChannel.id, taskId, agentName);
+            await this.registerChannel(existingChannel.id, taskId, agentName);
           }
           return existingChannel;
         }
@@ -148,7 +193,7 @@ export class SlackService {
       console.log(`[Slack] Created channel: #${channelName}`);
 
       // Register channel-task mapping for message routing
-      this.registerChannel(channel.id, taskId, agentName);
+      await this.registerChannel(channel.id, taskId, agentName);
 
       // Invite the user who started the task
       if (startedByUserId) {

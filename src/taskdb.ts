@@ -154,6 +154,16 @@ class TaskDatabase {
         CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)
       `);
 
+      // Slack channel-to-task mappings (persists across restarts)
+      await this.pg.query(`
+        CREATE TABLE IF NOT EXISTS channel_mappings (
+          channel_id VARCHAR(50) PRIMARY KEY,
+          task_id VARCHAR(50) REFERENCES tasks(id) ON DELETE CASCADE,
+          agent_name VARCHAR(100) NOT NULL,
+          created_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+
       console.log('[TaskDB] PostgreSQL tables initialized');
     } catch (err) {
       console.error('[TaskDB] Failed to initialize PostgreSQL tables:', err);
@@ -546,6 +556,56 @@ class TaskDatabase {
       totalLatencyMs,
       byEventType,
     };
+  }
+
+  // ============== Channel Mappings (Slack) ==============
+
+  async saveChannelMapping(channelId: string, taskId: string, agentName: string): Promise<void> {
+    if (this.usePostgres && this.pg) {
+      await this.pg.query(
+        `INSERT INTO channel_mappings (channel_id, task_id, agent_name)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (channel_id) DO UPDATE SET task_id = $2, agent_name = $3`,
+        [channelId, taskId, agentName]
+      );
+    }
+    // For non-postgres, we rely on in-memory mapping in SlackService
+  }
+
+  async getChannelMapping(channelId: string): Promise<{ taskId: string; agentName: string } | null> {
+    if (this.usePostgres && this.pg) {
+      const result = await this.pg.query(
+        'SELECT task_id, agent_name FROM channel_mappings WHERE channel_id = $1',
+        [channelId]
+      );
+      if (result.rows.length > 0) {
+        return {
+          taskId: result.rows[0].task_id,
+          agentName: result.rows[0].agent_name,
+        };
+      }
+    }
+    return null;
+  }
+
+  async deleteChannelMapping(channelId: string): Promise<void> {
+    if (this.usePostgres && this.pg) {
+      await this.pg.query('DELETE FROM channel_mappings WHERE channel_id = $1', [channelId]);
+    }
+  }
+
+  async getAllChannelMappings(): Promise<Map<string, { taskId: string; agentName: string }>> {
+    const mappings = new Map<string, { taskId: string; agentName: string }>();
+    if (this.usePostgres && this.pg) {
+      const result = await this.pg.query('SELECT channel_id, task_id, agent_name FROM channel_mappings');
+      for (const row of result.rows) {
+        mappings.set(row.channel_id, {
+          taskId: row.task_id,
+          agentName: row.agent_name,
+        });
+      }
+    }
+    return mappings;
   }
 }
 

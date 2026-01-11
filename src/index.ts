@@ -1453,7 +1453,7 @@ app.post('/api/slack/events', express.json(), async (req, res) => {
     console.log(`[Slack Events] Message from ${userId} in ${channelId}: ${messageText?.substring(0, 50)}...`);
 
     // Find the task associated with this channel
-    const taskInfo = slackService.getTaskForChannel(channelId);
+    const taskInfo = await slackService.getTaskForChannel(channelId);
     if (!taskInfo) {
       console.log('[Slack Events] No task found for channel:', channelId);
       return;
