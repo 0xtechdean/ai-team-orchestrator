@@ -72,10 +72,8 @@ export async function runClaudeCode(
     if (prompt.length > 500 || prompt.includes('\n')) {
       promptFile = join(tmpdir(), `claude-prompt-${Date.now()}.txt`);
       writeFileSync(promptFile, prompt);
-    } else {
-      // For short prompts, pass directly (escape single quotes)
-      claudeArgs.push(prompt);
     }
+    // Note: prompt is added in bash command construction below, not here
 
     const hasToken = !!process.env.CLAUDE_CODE_OAUTH_TOKEN;
     console.log(`[ClaudeRunner] Running with model: ${model}`);
@@ -83,34 +81,30 @@ export async function runClaudeCode(
     console.log(`[ClaudeRunner] Prompt length: ${prompt.length}, using file: ${!!promptFile}`);
     console.log(`[ClaudeRunner] Prompt preview: ${prompt.substring(0, 100)}...`);
 
-    // Build the command - if using file, pipe it to claude
-    let child;
+    // Build the bash command with unbuffer for pseudo-TTY
+    // Use $(cat file) for prompts to avoid stdin piping issues with unbuffer
+    let bashCmd: string;
     if (promptFile) {
-      // Use bash to pipe file content to claude
-      const bashCmd = `cat '${promptFile}' | claude ${claudeArgs.map(a => `'${a}'`).join(' ')}`;
-      child = spawn('unbuffer', ['bash', '-c', bashCmd], {
-        cwd: workingDir,
-        env: {
-          ...process.env,
-          CI: 'true',
-          TERM: 'xterm-256color',
-          CLAUDE_CODE_OAUTH_TOKEN: process.env.CLAUDE_CODE_OAUTH_TOKEN || '',
-        },
-        stdio: ['pipe', 'pipe', 'pipe'],
-      });
+      // Long prompt: read from file using command substitution
+      bashCmd = `claude ${claudeArgs.map(a => `'${a}'`).join(' ')} "$(cat '${promptFile}')"`;
     } else {
-      // unbuffer creates a pseudo-TTY which Claude CLI needs
-      child = spawn('unbuffer', ['claude', ...claudeArgs], {
-        cwd: workingDir,
-        env: {
-          ...process.env,
-          CI: 'true',
-          TERM: 'xterm-256color',
-          CLAUDE_CODE_OAUTH_TOKEN: process.env.CLAUDE_CODE_OAUTH_TOKEN || '',
-        },
-        stdio: ['pipe', 'pipe', 'pipe'],
-      });
+      // Short prompt: pass directly (escape for bash)
+      const escapedPrompt = prompt.replace(/'/g, "'\\''");
+      bashCmd = `claude ${claudeArgs.map(a => `'${a}'`).join(' ')} '${escapedPrompt}'`;
     }
+
+    console.log(`[ClaudeRunner] Command: unbuffer bash -c '${bashCmd.substring(0, 100)}...'`);
+
+    const child = spawn('unbuffer', ['bash', '-c', bashCmd], {
+      cwd: workingDir,
+      env: {
+        ...process.env,
+        CI: 'true',
+        TERM: 'xterm-256color',
+        CLAUDE_CODE_OAUTH_TOKEN: process.env.CLAUDE_CODE_OAUTH_TOKEN || '',
+      },
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
 
     child.stdin?.end();
 

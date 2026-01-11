@@ -13,10 +13,8 @@ import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
 // Use Claude Code CLI instead of API if enabled
-// Default to API mode (more reliable on servers)
-// CLI mode requires unbuffer and proper TTY which doesn't always work in Docker
-// Set USE_CLAUDE_CODE=true AND ensure unbuffer is available to use CLI
-const USE_CLAUDE_CODE = process.env.USE_CLAUDE_CODE === 'true' && process.env.FORCE_CLI_MODE === 'true';
+// Set USE_CLAUDE_CODE=true to use CLI with Pro subscription
+const USE_CLAUDE_CODE = process.env.USE_CLAUDE_CODE === 'true';
 
 interface AgentContext {
   task?: string;
