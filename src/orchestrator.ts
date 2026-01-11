@@ -167,11 +167,17 @@ ${task}
 3. Execute the work or delegate to other agents
 4. Create handoffs in \`docs/handoffs/\` if passing work to others
 
+### File Sharing
+When you create or modify important files, share the file path so others can view it.
+Files in \`/app/\` are viewable at: \`/api/files/view?path=/app/path/to/file\`
+Example: Created report at \`/app/docs/handoffs/research-findings.md\`
+→ View: https://ai-team-production.up.railway.app/api/files/view?path=/app/docs/handoffs/research-findings.md
+
 ### AFTER Completing (Required)
 5. **Update the docs** with your changes:
    - Update \`docs/status.md\` with your progress
    - Create a handoff file if next agent needs context
-6. Report your results clearly
+6. Report your results clearly with links to any files created
 7. List 1-3 key learnings in a "## Learnings" section
 
 ${selfImprovementInstructions}

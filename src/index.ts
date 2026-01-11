@@ -1740,6 +1740,115 @@ app.get('/api/traces/recent', async (req, res) => {
   }
 });
 
+// ============== File Viewer Routes ==============
+
+// View a file's contents (for sharing file links)
+app.get('/api/files/view', async (req, res) => {
+  try {
+    const { path: filePath } = req.query;
+    if (!filePath || typeof filePath !== 'string') {
+      return res.status(400).json({ error: 'path query parameter is required' });
+    }
+
+    const { readFileSync, existsSync } = await import('fs');
+    const { resolve, relative, basename, extname } = await import('path');
+
+    // Security: Only allow files within /app directory
+    const absolutePath = resolve(filePath);
+    if (!absolutePath.startsWith('/app/')) {
+      return res.status(403).json({ error: 'Access denied - only /app files allowed' });
+    }
+
+    if (!existsSync(absolutePath)) {
+      return res.status(404).json({ error: 'File not found', path: absolutePath });
+    }
+
+    const content = readFileSync(absolutePath, 'utf-8');
+    const ext = extname(absolutePath).toLowerCase();
+
+    res.json({
+      path: absolutePath,
+      relativePath: relative('/app', absolutePath),
+      filename: basename(absolutePath),
+      extension: ext,
+      content,
+      lines: content.split('\n').length,
+      size: content.length,
+      viewUrl: `${req.protocol}://${req.get('host')}/api/files/view?path=${encodeURIComponent(absolutePath)}`
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to read file', details: String(error) });
+  }
+});
+
+// Log a file operation (for tracking what agents work on)
+app.post('/api/files/log', express.json(), async (req, res) => {
+  try {
+    const { taskId, agentName, operation, filePath, description } = req.body;
+
+    if (!taskId || !agentName || !operation || !filePath) {
+      return res.status(400).json({ error: 'taskId, agentName, operation, and filePath are required' });
+    }
+
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const viewUrl = `${baseUrl}/api/files/view?path=${encodeURIComponent(filePath)}`;
+
+    // Log as a trace with file metadata
+    const trace = await taskDb.logTrace(
+      taskId,
+      agentName,
+      'tool_call',
+      `${operation}: ${filePath}`,
+      {
+        operation,
+        filePath,
+        viewUrl,
+        description: description || null
+      }
+    );
+
+    res.status(201).json({
+      ...trace,
+      viewUrl
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to log file operation' });
+  }
+});
+
+// List files worked on for a task
+app.get('/api/tasks/:taskId/files', async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const traces = await taskDb.getTraces(taskId, 100);
+
+    // Filter for file operations and extract unique files
+    const fileOps = traces
+      .filter((t) => t.metadata && typeof t.metadata === 'object' && 'filePath' in t.metadata)
+      .map((t) => {
+        const meta = t.metadata as { filePath: string; operation?: string; viewUrl?: string };
+        return {
+          filePath: meta.filePath,
+          operation: meta.operation,
+          viewUrl: meta.viewUrl,
+          timestamp: t.createdAt
+        };
+      });
+
+    // Get unique files with latest operation
+    const filesMap = new Map();
+    for (const op of fileOps) {
+      if (!filesMap.has(op.filePath) || new Date(op.timestamp) > new Date(filesMap.get(op.filePath).timestamp)) {
+        filesMap.set(op.filePath, op);
+      }
+    }
+
+    res.json(Array.from(filesMap.values()));
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get task files' });
+  }
+});
+
 // Serve dashboard
 app.get('/', (req, res) => {
   res.sendFile(join(__dirname, '../public/index.html'));
