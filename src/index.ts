@@ -26,38 +26,85 @@ const orchestrator = new AgentOrchestrator({
   },
 });
 
-// Claude CLI setup endpoint - returns OAuth URL for authentication
-app.get('/api/claude-setup', async (req, res) => {
+// Claude CLI setup - run setup-token from server and capture the token
+let setupProcess: ReturnType<typeof import('child_process').spawn> | null = null;
+let setupOutput = '';
+let setupToken = '';
+
+app.get('/api/claude-setup/start', async (req, res) => {
   const { spawn } = await import('child_process');
 
-  // Run claude login and capture the OAuth URL
-  const child = spawn('claude', ['login'], {
-    env: { ...process.env, CI: 'true', TERM: 'dumb' },
+  if (setupProcess) {
+    setupProcess.kill();
+  }
+
+  setupOutput = '';
+  setupToken = '';
+
+  // Run claude setup-token with unbuffer for pseudo-TTY
+  setupProcess = spawn('unbuffer', ['claude', 'setup-token'], {
+    env: { ...process.env, CI: 'true', TERM: 'xterm-256color' },
   });
 
-  let output = '';
-  child.stdout?.on('data', (data) => { output += data.toString(); });
-  child.stderr?.on('data', (data) => { output += data.toString(); });
+  setupProcess.stdout?.on('data', (data) => {
+    const chunk = data.toString();
+    setupOutput += chunk;
+    console.log('[Setup]', chunk);
 
-  // Give it a few seconds to output the URL
-  setTimeout(() => {
-    child.kill();
+    // Try to capture the token from output
+    const tokenMatch = chunk.match(/sk-ant-[a-zA-Z0-9_-]+/);
+    if (tokenMatch) {
+      setupToken = tokenMatch[0];
+    }
+  });
 
-    // Try to extract URL from output
-    const urlMatch = output.match(/https:\/\/[^\s]+/);
+  setupProcess.stderr?.on('data', (data) => {
+    setupOutput += data.toString();
+  });
 
-    res.json({
-      message: 'Run "claude setup-token" locally and update CLAUDE_CODE_OAUTH_TOKEN in Railway',
-      output: output.substring(0, 500),
-      authUrl: urlMatch ? urlMatch[0] : null,
-      instructions: [
-        '1. Run locally: claude setup-token',
-        '2. Copy the token it generates',
-        '3. Update Railway env var: CLAUDE_CODE_OAUTH_TOKEN',
-        '4. Redeploy or restart the service'
-      ]
-    });
-  }, 3000);
+  setupProcess.on('close', (code) => {
+    console.log('[Setup] Process exited with code', code);
+    setupProcess = null;
+  });
+
+  // Wait a moment for the auth URL to appear
+  await new Promise(resolve => setTimeout(resolve, 2000));
+
+  // Extract auth URL
+  const urlMatch = setupOutput.match(/https:\/\/console\.anthropic\.com[^\s\]]+/);
+
+  res.json({
+    status: 'started',
+    authUrl: urlMatch ? urlMatch[0] : null,
+    instructions: urlMatch
+      ? 'Open the authUrl in your browser to authenticate, then call /api/claude-setup/status'
+      : 'Waiting for auth URL... Call /api/claude-setup/status to check progress',
+    output: setupOutput.substring(0, 1000),
+  });
+});
+
+app.get('/api/claude-setup/status', (req, res) => {
+  // Extract auth URL and token from current output
+  const urlMatch = setupOutput.match(/https:\/\/console\.anthropic\.com[^\s\]]+/);
+  const tokenMatch = setupOutput.match(/sk-ant-[a-zA-Z0-9_-]+/);
+
+  res.json({
+    running: !!setupProcess,
+    authUrl: urlMatch ? urlMatch[0] : null,
+    token: tokenMatch ? tokenMatch[0] : null,
+    output: setupOutput.substring(0, 2000),
+    instructions: tokenMatch
+      ? 'Token captured! Update CLAUDE_CODE_OAUTH_TOKEN in Railway with this token.'
+      : 'Complete authentication in browser, then refresh this endpoint.',
+  });
+});
+
+app.post('/api/claude-setup/stop', (req, res) => {
+  if (setupProcess) {
+    setupProcess.kill();
+    setupProcess = null;
+  }
+  res.json({ status: 'stopped' });
 });
 
 // Health check
