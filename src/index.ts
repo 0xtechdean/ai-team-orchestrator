@@ -59,8 +59,9 @@ app.get('/api/claude-setup/start', async (req, res) => {
     unlinkSync('/tmp/claude-auth-url.txt');
   } catch {}
 
-  // Run claude setup-token with fake browser to capture URL
-  setupProcess = spawn('unbuffer', ['claude', 'setup-token'], {
+  // Run claude setup-token with unbuffer for TTY
+  // stdin will be available for sending the code
+  setupProcess = spawn('unbuffer', ['-p', 'claude', 'setup-token'], {
     env: {
       ...process.env,
       CI: 'true',
@@ -68,6 +69,7 @@ app.get('/api/claude-setup/start', async (req, res) => {
       BROWSER: browserScript,
       DISPLAY: '',  // Disable X11
     },
+    stdio: ['pipe', 'pipe', 'pipe'],
   });
 
   setupProcess.stdout?.on('data', (data) => {
@@ -305,11 +307,17 @@ app.post('/api/claude-setup/send-code', express.json(), async (req, res) => {
   console.log('[Setup] Sending code to CLI stdin:', code.substring(0, 20) + '...');
 
   try {
-    // Send the code followed by newline
-    setupProcess.stdin.write(code + '\n');
+    // Send the code followed by newline, then flush
+    const written = setupProcess.stdin.write(code + '\n', 'utf8');
+    console.log('[Setup] Write returned:', written);
+
+    // Ensure the write is flushed
+    if (!written) {
+      await new Promise(resolve => setupProcess!.stdin!.once('drain', resolve));
+    }
 
     // Wait a moment for the CLI to process
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await new Promise(resolve => setTimeout(resolve, 5000));
 
     // Check if token was captured
     const tokenMatch = setupOutput.match(/sk-ant-oat[a-zA-Z0-9_-]+/);
