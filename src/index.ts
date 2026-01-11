@@ -342,6 +342,51 @@ app.post('/api/claude-setup/send-code', express.json(), async (req, res) => {
   }
 });
 
+// Debug endpoint to check Claude config directory
+app.get('/api/claude-setup/debug', async (req, res) => {
+  const { readdirSync, readFileSync, existsSync, statSync } = await import('fs');
+  const { homedir } = await import('os');
+  const { join } = await import('path');
+
+  const claudeDir = join(homedir(), '.claude');
+  const result: Record<string, unknown> = {
+    homeDir: homedir(),
+    claudeDir,
+    claudeDirExists: existsSync(claudeDir),
+    files: [] as string[],
+    tokenFiles: {} as Record<string, string>,
+    envTokenPreview: process.env.CLAUDE_CODE_OAUTH_TOKEN
+      ? process.env.CLAUDE_CODE_OAUTH_TOKEN.substring(0, 30) + '...'
+      : null,
+  };
+
+  if (existsSync(claudeDir)) {
+    try {
+      const files = readdirSync(claudeDir);
+      result.files = files;
+
+      // Read any token-related files
+      for (const file of files) {
+        const filePath = join(claudeDir, file);
+        const stat = statSync(filePath);
+        if (stat.isFile() && stat.size < 10000) {
+          try {
+            const content = readFileSync(filePath, 'utf-8');
+            // Only include files that might contain tokens
+            if (file.includes('token') || file.includes('auth') || file.includes('credential')) {
+              result.tokenFiles[file] = content.substring(0, 100) + (content.length > 100 ? '...' : '');
+            }
+          } catch {}
+        }
+      }
+    } catch (e) {
+      result.error = String(e);
+    }
+  }
+
+  res.json(result);
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({
