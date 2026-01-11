@@ -4,6 +4,7 @@
 FROM node:20-slim
 
 # Install dependencies (expect provides unbuffer for pseudo-TTY, chromium for puppeteer)
+# build-essential and python3 are needed for node-pty native compilation
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -25,6 +26,8 @@ RUN apt-get update && apt-get install -y \
     libxdamage1 \
     libxrandr2 \
     xdg-utils \
+    build-essential \
+    python3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Set Puppeteer to use system Chromium
