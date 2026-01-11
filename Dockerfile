@@ -11,7 +11,6 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Claude CLI globally
-# Note: Claude CLI requires ANTHROPIC_API_KEY env var for authentication
 RUN npm install -g @anthropic-ai/claude-code
 
 # Create app directory
@@ -19,13 +18,20 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
+COPY tsconfig.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install ALL dependencies (including dev for build)
+RUN npm ci
 
-# Copy built files
-COPY dist ./dist
+# Copy source files
+COPY src ./src
 COPY public ./public
+
+# Build TypeScript
+RUN npm run build
+
+# Remove dev dependencies after build
+RUN npm prune --production
 
 # Copy agent definitions
 COPY .claude ./.claude
@@ -39,7 +45,7 @@ ENV CI=true
 
 # Claude CLI authentication:
 # 1. Run 'claude setup-token' locally to get a long-lived token
-# 2. Set CLAUDE_AUTH_TOKEN on Railway: railway variables set CLAUDE_AUTH_TOKEN=<token>
+# 2. Set CLAUDE_CODE_OAUTH_TOKEN on Railway
 # 3. Also set USE_CLAUDE_CODE=true to enable CLI mode
 
 # Expose port

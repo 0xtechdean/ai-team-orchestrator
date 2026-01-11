@@ -7,7 +7,5 @@ npm-debug.log
 *.md
 !README.md
 demo/
-src/
-*.ts
-tsconfig.json
+dist/
 .DS_Store
