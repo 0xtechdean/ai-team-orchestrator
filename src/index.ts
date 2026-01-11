@@ -88,16 +88,32 @@ app.get('/api/claude-setup/start', async (req, res) => {
   // Wait a moment for the auth URL to appear
   await new Promise(resolve => setTimeout(resolve, 2000));
 
-  // Extract auth URL
-  const urlMatch = setupOutput.match(/https:\/\/console\.anthropic\.com[^\s\]]+/);
+  // Extract auth URL and modify redirect_uri to point to our server
+  const urlMatch = setupOutput.match(/https:\/\/claude\.ai\/oauth[^\s\]\u001b]+/) ||
+                   setupOutput.match(/https:\/\/console\.anthropic\.com[^\s\]\u001b]+/);
+
+  let authUrl = urlMatch ? urlMatch[0] : null;
+  let serverCallbackUrl = null;
+
+  if (authUrl) {
+    // Get the server's public URL
+    const serverHost = req.headers.host || 'ai-team-production.up.railway.app';
+    const serverCallback = `https://${serverHost}/api/claude-setup/callback`;
+    serverCallbackUrl = serverCallback;
+
+    // Replace localhost callback with our server callback
+    // Note: This may not work if OAuth provider validates redirect_uri strictly
+    // In that case, user will need to manually copy the code
+  }
 
   res.json({
     status: 'started',
-    authUrl: urlMatch ? urlMatch[0] : null,
-    instructions: urlMatch
-      ? 'Open the authUrl in your browser to authenticate, then call /api/claude-setup/status'
+    authUrl: authUrl,
+    serverCallback: serverCallbackUrl,
+    instructions: authUrl
+      ? `1. Open authUrl in browser\n2. Authenticate\n3. When redirected to localhost (will fail), copy the full URL\n4. Replace 'localhost:XXXXX' with '${req.headers.host}/api/claude-setup' and visit that URL\n5. Check /api/claude-setup/status for the token`
       : 'Waiting for auth URL... Call /api/claude-setup/status to check progress',
-    output: setupOutput.substring(0, 1000),
+    output: setupOutput.replace(/\u001b\[[0-9;]*[a-zA-Z]/g, '').substring(0, 500),
   });
 });
 
@@ -140,6 +156,49 @@ app.post('/api/claude-setup/stop', (req, res) => {
     setupProcess = null;
   }
   res.json({ status: 'stopped' });
+});
+
+// OAuth callback forwarder - forwards the callback to Claude CLI's internal server
+app.get('/api/claude-setup/callback', async (req, res) => {
+  const queryString = new URL(req.url, `http://${req.headers.host}`).search;
+
+  // Extract the port from the auth URL we captured (default 36755)
+  let port = 36755;
+  const authUrlMatch = setupOutput.match(/localhost:(\d+)/);
+  if (authUrlMatch) {
+    port = parseInt(authUrlMatch[1]);
+  }
+
+  console.log(`[Setup] Forwarding callback to localhost:${port}${queryString}`);
+
+  try {
+    // Forward the callback to Claude CLI's local server
+    const response = await fetch(`http://localhost:${port}/callback${queryString}`);
+    const text = await response.text();
+
+    console.log('[Setup] Callback response:', text.substring(0, 200));
+
+    res.send(`
+      <html>
+        <body style="font-family: system-ui; padding: 40px; text-align: center;">
+          <h1>✓ Authentication forwarded to Claude CLI</h1>
+          <p>Check <code>/api/claude-setup/status</code> for the token.</p>
+          <p><a href="/api/claude-setup/status">Check Status</a></p>
+        </body>
+      </html>
+    `);
+  } catch (error) {
+    console.error('[Setup] Callback forward failed:', error);
+    res.status(500).send(`
+      <html>
+        <body style="font-family: system-ui; padding: 40px; text-align: center;">
+          <h1>❌ Callback forward failed</h1>
+          <p>Claude CLI might not be listening. Start setup first.</p>
+          <pre>${error}</pre>
+        </body>
+      </html>
+    `);
+  }
 });
 
 // Manual token input - if you got a token from running setup-token locally
