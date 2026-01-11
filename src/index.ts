@@ -237,7 +237,8 @@ app.post('/api/run-agent', async (req, res) => {
     res.json({ result });
   } catch (error) {
     console.error('Agent run failed:', error);
-    res.status(500).json({ error: 'Failed to run agent' });
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ error: 'Failed to run agent', details: errorMessage });
   }
 });
 
