@@ -402,52 +402,124 @@ app.post('/api/claude-setup/browser-magic-link', express.json(), async (req, res
   }
 
   try {
-    const puppeteer = await import('puppeteer');
+    const puppeteerExtra = await import('puppeteer-extra');
+    const StealthPlugin = await import('puppeteer-extra-plugin-stealth');
+    const { writeFileSync } = await import('fs');
+    const { join } = await import('path');
 
-    console.log('[BrowserAuth] Opening magic link from server...');
+    // Add stealth plugin to avoid Cloudflare detection
+    puppeteerExtra.default.use(StealthPlugin.default());
 
-    const browser = await puppeteer.default.launch({
+    console.log('[BrowserAuth] Opening magic link from server with stealth...');
+
+    const browser = await puppeteerExtra.default.launch({
       headless: true,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-gpu',
+        '--disable-blink-features=AutomationControlled',
+        '--window-size=1280,800',
       ],
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
     });
 
     const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 800 });
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
-    // Open the magic link - this should redirect to the OAuth callback
-    await page.goto(magicLink, { waitUntil: 'networkidle2', timeout: 30000 });
+    // Open the magic link - this should redirect through Claude login
+    console.log('[BrowserAuth] Navigating to magic link...');
+    await page.goto(magicLink, { waitUntil: 'networkidle2', timeout: 60000 });
 
-    const finalUrl = page.url();
-    console.log('[BrowserAuth] Final URL after magic link:', finalUrl);
+    // Wait for Cloudflare challenge to complete
+    let cfAttempts = 0;
+    while (cfAttempts < 30) {
+      const title = await page.title();
+      if (!title.includes('moment') && !title.includes('Cloudflare')) {
+        break;
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      cfAttempts++;
+    }
 
-    // If we ended up at localhost callback, extract and forward it
-    if (finalUrl.includes('localhost') && finalUrl.includes('callback')) {
-      const callbackParams = new URL(finalUrl).search;
-      const portMatch = finalUrl.match(/localhost:(\d+)/);
-      const port = portMatch ? parseInt(portMatch[1]) : 36755;
+    // Wait for page to fully load and redirect
+    await new Promise(resolve => setTimeout(resolve, 5000));
 
-      console.log('[BrowserAuth] Got localhost callback, forwarding to CLI...');
+    let finalUrl = page.url();
+    console.log('[BrowserAuth] Current URL after magic link:', finalUrl);
 
-      // Forward to CLI's local server
-      try {
-        const callbackResponse = await fetch(`http://localhost:${port}/callback${callbackParams}`);
-        console.log('[BrowserAuth] Callback forwarded, status:', callbackResponse.status);
-      } catch (e) {
-        console.log('[BrowserAuth] Callback forward failed (CLI might handle it directly):', e);
+    // Take screenshot
+    const screenshot = await page.screenshot({ encoding: 'base64' });
+    const screenshotPath = join(__dirname, '../public/magic-link-result.png');
+    writeFileSync(screenshotPath, Buffer.from(screenshot, 'base64'));
+
+    // Check if we're on the console.anthropic.com callback page with a code
+    let authCode: string | null = null;
+
+    if (finalUrl.includes('console.anthropic.com') && finalUrl.includes('callback')) {
+      console.log('[BrowserAuth] On console callback page, extracting code...');
+
+      // Try to extract the code from the page content
+      const pageText = await page.evaluate(() => document.body.innerText);
+      console.log('[BrowserAuth] Page text:', pageText.substring(0, 500));
+
+      // Look for the authorization code - it's usually displayed on the page
+      // The code is typically a long alphanumeric string
+      const codeMatch = pageText.match(/([A-Za-z0-9_-]{40,})/);
+      if (codeMatch) {
+        authCode = codeMatch[1];
+        console.log('[BrowserAuth] Found auth code:', authCode.substring(0, 20) + '...');
+      }
+
+      // Also try to find it in a code/pre element or input
+      if (!authCode) {
+        authCode = await page.evaluate(() => {
+          // Check for code in pre/code elements
+          const codeEl = document.querySelector('pre, code, .code, [class*="code"]');
+          if (codeEl && codeEl.textContent) {
+            const match = codeEl.textContent.match(/([A-Za-z0-9_-]{40,})/);
+            if (match) return match[1];
+          }
+          // Check for code in input elements
+          const input = document.querySelector('input[readonly], input[type="text"]') as HTMLInputElement;
+          if (input && input.value && input.value.length > 40) {
+            return input.value;
+          }
+          return null;
+        });
+      }
+    }
+
+    // If we found a code, feed it to the CLI
+    if (authCode && setupProcess && setupProcess.stdin) {
+      console.log('[BrowserAuth] Sending auth code to CLI...');
+      setupProcess.stdin.write(authCode + '\n');
+
+      // Wait for the CLI to process the code
+      await new Promise(resolve => setTimeout(resolve, 10000));
+
+      // Check for token in output
+      const tokenMatch = setupOutput.match(/sk-ant-oat[a-zA-Z0-9_-]+/);
+      if (tokenMatch) {
+        setupToken = tokenMatch[0];
+        process.env.CLAUDE_CODE_OAUTH_TOKEN = setupToken;
+
+        await browser.close();
+
+        return res.json({
+          status: 'success',
+          token: setupToken,
+          message: 'Token captured! It has been set in the environment.',
+          hint: 'Test with POST /api/run-agent',
+        });
       }
     }
 
     await browser.close();
 
-    // Wait for token to be captured
-    await new Promise(resolve => setTimeout(resolve, 5000));
-
-    // Check for token
+    // Check for token one more time
     const tokenMatch = setupOutput.match(/sk-ant-oat[a-zA-Z0-9_-]+/);
     if (tokenMatch) {
       setupToken = tokenMatch[0];
@@ -463,7 +535,11 @@ app.post('/api/claude-setup/browser-magic-link', express.json(), async (req, res
       res.json({
         status: 'pending',
         finalUrl,
-        message: 'Magic link opened. Check /api/claude-setup/status for token.',
+        authCodeFound: !!authCode,
+        screenshotUrl: '/magic-link-result.png',
+        message: authCode
+          ? 'Auth code found and sent to CLI. Check /api/claude-setup/status for token.'
+          : 'Magic link opened but no auth code found. Check screenshot.',
         setupOutput: setupOutput.slice(-500),
       });
     }
