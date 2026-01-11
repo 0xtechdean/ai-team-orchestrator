@@ -6,6 +6,31 @@
 import { spawn } from 'child_process';
 import { join } from 'path';
 
+// Pre-warm flag to avoid repeated cold starts
+let preWarmed = false;
+
+/**
+ * Pre-warm the Claude CLI by running a simple command
+ * This loads the CLI into memory and validates authentication
+ */
+export async function preWarmClaude(): Promise<boolean> {
+  if (preWarmed) return true;
+
+  console.log('[ClaudeRunner] Pre-warming Claude CLI...');
+  const result = await runClaudeCode('Say "ready" in one word', {
+    timeout: 60000,
+  });
+
+  if (result.success) {
+    preWarmed = true;
+    console.log('[ClaudeRunner] Pre-warm successful');
+    return true;
+  } else {
+    console.error('[ClaudeRunner] Pre-warm failed:', result.error);
+    return false;
+  }
+}
+
 interface ClaudeRunResult {
   success: boolean;
   output: string;
@@ -57,7 +82,9 @@ export async function runClaudeCode(
         // Use OAuth token from setup-token command
         CLAUDE_CODE_OAUTH_TOKEN: process.env.CLAUDE_CODE_OAUTH_TOKEN || '',
       },
-      stdio: ['pipe', 'pipe', 'pipe'],
+      // IMPORTANT: stdin must be inherited or Claude CLI hangs
+      // It checks for TTY on stdin before proceeding
+      stdio: ['inherit', 'pipe', 'pipe'],
     });
 
     let stdout = '';

@@ -10,6 +10,7 @@ import { join } from 'path';
 import { taskDb } from './taskdb';
 import { AgentOrchestrator } from './orchestrator';
 import { agentRegistry } from './agent-registry';
+import { preWarmClaude } from './claude-runner';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -352,7 +353,7 @@ app.get('/', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`
 ╔══════════════════════════════════════════════════════╗
 ║           Agentic                                    ║
@@ -367,6 +368,17 @@ app.listen(PORT, () => {
 ║   - POST /api/run-agent                              ║
 ╚══════════════════════════════════════════════════════╝
   `);
+
+  // Pre-warm Claude CLI if using CLI mode
+  if (process.env.USE_CLAUDE_CODE === 'true') {
+    console.log('[Startup] USE_CLAUDE_CODE enabled, pre-warming Claude CLI...');
+    const warmed = await preWarmClaude();
+    if (warmed) {
+      console.log('[Startup] Claude CLI ready for agent tasks');
+    } else {
+      console.warn('[Startup] Claude CLI pre-warm failed - agents may be slow or fail');
+    }
+  }
 });
 
 export { app };
