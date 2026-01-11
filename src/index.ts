@@ -34,13 +34,17 @@ let setupPort: number | null = null;
 let setupStartTime: number | null = null;
 let setupAuthUrl: string | null = null;  // Store the full auth URL when detected
 
-// Screenshot the auth page to see what we're working with
+// Screenshot the auth page to see what we're working with (with stealth to bypass Cloudflare)
 app.get('/api/claude-setup/screenshot-auth', async (req, res) => {
   try {
-    const puppeteer = await import('puppeteer');
+    const puppeteerExtra = await import('puppeteer-extra');
+    const StealthPlugin = await import('puppeteer-extra-plugin-stealth');
     const { spawn } = await import('child_process');
     const { writeFileSync } = await import('fs');
     const { join } = await import('path');
+
+    // Add stealth plugin to avoid Cloudflare detection
+    puppeteerExtra.default.use(StealthPlugin.default());
 
     console.log('[Screenshot] Starting Claude setup-token to get auth URL...');
 
@@ -80,16 +84,18 @@ app.get('/api/claude-setup/screenshot-auth', async (req, res) => {
       return res.status(500).json({ error: 'Failed to get auth URL from CLI' });
     }
 
-    console.log('[Screenshot] Launching browser...');
+    console.log('[Screenshot] Launching stealth browser...');
 
-    // Launch Puppeteer
-    const browser = await puppeteer.default.launch({
-      headless: true,
+    // Launch Puppeteer with stealth plugin
+    const browser = await puppeteerExtra.default.launch({
+      headless: 'new',
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-gpu',
+        '--disable-blink-features=AutomationControlled',
+        '--window-size=1280,800',
       ],
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
     });
@@ -97,11 +103,33 @@ app.get('/api/claude-setup/screenshot-auth', async (req, res) => {
     const page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 800 });
 
+    // Set a realistic user agent
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+
     // Navigate to auth URL
-    await page.goto(authUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+    console.log('[Screenshot] Navigating to auth URL...');
+    await page.goto(authUrl, { waitUntil: 'networkidle2', timeout: 60000 });
+
+    // Wait for Cloudflare challenge to complete (up to 30 seconds)
+    console.log('[Screenshot] Waiting for Cloudflare challenge...');
+    let cfAttempts = 0;
+    while (cfAttempts < 30) {
+      const title = await page.title();
+      if (!title.includes('moment') && !title.includes('Cloudflare')) {
+        console.log('[Screenshot] Cloudflare challenge passed!');
+        break;
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      cfAttempts++;
+    }
+
+    // Wait a bit more for page to fully load
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
     const currentUrl = page.url();
+    const pageTitle = await page.title();
     console.log('[Screenshot] Current URL:', currentUrl);
+    console.log('[Screenshot] Page title:', pageTitle);
 
     // Take screenshot
     const screenshot = await page.screenshot({ encoding: 'base64' });
@@ -138,11 +166,12 @@ app.get('/api/claude-setup/screenshot-auth', async (req, res) => {
 
     res.json({
       status: 'Screenshot captured',
+      pageTitle,
       currentUrl,
       screenshotUrl: '/auth-screenshot.png',
       inputs,
       buttons,
-      htmlPreview: pageHtml.substring(0, 2000),
+      htmlPreview: pageHtml.substring(0, 3000),
     });
   } catch (error) {
     console.error('[Screenshot] Error:', error);

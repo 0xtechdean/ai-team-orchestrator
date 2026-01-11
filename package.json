@@ -27,7 +27,9 @@
     "express": "^4.21.2",
     "ioredis": "^5.4.2",
     "pg": "^8.13.1",
-    "puppeteer": "^24.0.0"
+    "puppeteer": "^24.0.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
