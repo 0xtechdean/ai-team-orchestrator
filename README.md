@@ -26,6 +26,7 @@ A self-improving multi-agent system that coordinates AI agents to work on tasks 
 - **Role-Based Permissions**: Manager, Specialist, and Support roles with different capabilities
 - **Release Stuck Tasks**: One-click release for tasks stuck in progress
 - **Slack Integration**: Creates dedicated channels for each task, enabling real-time communication
+- **Git Branch Workflow**: Automatic branch creation per task with PR generation for code review
 
 ## Architecture
 
@@ -115,6 +116,10 @@ Open http://localhost:3000 to access the Kanban dashboard.
 | `PORT` | No | Server port (default: 3000) |
 | `SLACK_BOT_TOKEN` | No | Slack Bot Token for task channels |
 | `SLACK_CHANNEL_ID` | No | Default Slack channel for notifications |
+| `GITHUB_TOKEN` | No | GitHub personal access token for PR creation |
+| `GITHUB_OWNER` | No | GitHub repository owner (default: Othentic-Labs) |
+| `GITHUB_REPO` | No | GitHub repository name (default: ai-team) |
+| `GITHUB_WEBHOOK_SECRET` | No | Secret for webhook signature verification |
 
 ### Agent Definitions
 
@@ -299,13 +304,90 @@ Status: In Progress
 Use this channel to communicate with the agent about this task.
 ```
 
+## Git Branch Workflow
+
+When GitHub is configured, agents work on isolated branches and create PRs for code review:
+
+### How It Works
+
+1. **Branch Creation**: When an agent starts a task, a branch is created: `task/{taskId}-{slug}`
+2. **Isolated Work**: Agent commits changes to the task branch, not main/master
+3. **PR Creation**: When task completes, a PR is automatically created
+4. **Human Review**: Team reviews the PR and merges when ready
+5. **Auto-Cleanup**: After merge, the task branch is automatically deleted
+
+### Setting Up GitHub
+
+1. Create a Personal Access Token at https://github.com/settings/tokens
+2. Required scopes: `repo` (full control of private repositories)
+3. Set environment variables:
+   ```bash
+   GITHUB_TOKEN=ghp_xxxxxxxxxxxx
+   GITHUB_OWNER=your-org        # default: Othentic-Labs
+   GITHUB_REPO=your-repo        # default: ai-team
+   ```
+
+### GitHub Webhook (Optional)
+
+For automatic task status updates when PRs are merged:
+
+1. Go to your repo Settings → Webhooks
+2. Add webhook:
+   - URL: `https://your-domain.com/api/github/webhook`
+   - Content type: `application/json`
+   - Events: `Pull requests`
+3. (Optional) Set `GITHUB_WEBHOOK_SECRET` for signature verification
+
+### Branch Naming Convention
+
+```
+task/{taskId}-{slug}
+
+Examples:
+- task/abc123-implement-user-auth
+- task/xyz789-fix-login-bug
+- task/def456-add-dashboard-chart
+```
+
+### PR Template
+
+PRs are created with:
+- Title: `[{taskId}] {task title}`
+- Body: Task description + auto-generated summary
+- Base branch: `master` (configurable via `DEFAULT_BASE_BRANCH`)
+
+### Task Status Flow
+
+| Status | Description |
+|--------|-------------|
+| `backlog` | Task not started |
+| `ready` | Ready to work on |
+| `in_progress` | Agent working (branch exists) |
+| `pr_created` | PR open for review |
+| `done` | PR merged |
+
+### Dashboard Features
+
+- **PR Review Column**: Tasks awaiting review in dedicated Kanban column
+- **PR Badge**: Shows PR number and status on task cards
+- **Branch Display**: Shows branch name on task cards
+- **PR Links**: Click to open PR in GitHub
+
 ## Task Workflow
 
 1. Tasks start in **Backlog**
 2. Move to **Ready** when unblocked
-3. Agent picks up and moves to **In Progress** (Slack channel created)
-4. Agent completes and moves to **Done** (Slack channel updated)
-5. PM evaluates and creates follow-up tasks
+3. Agent picks up and moves to **In Progress** (Slack channel + Git branch created)
+4. Agent completes and creates PR, moves to **PR Review**
+5. Human reviews and merges PR → moves to **Done**
+6. PM evaluates and creates follow-up tasks
+
+```
+Backlog → Ready → In Progress → PR Review → Done
+                       ↓             ↓
+                  Branch created  PR created
+                  #task-agent-id  task/{id}-{slug}
+```
 
 ## Deployment
 
