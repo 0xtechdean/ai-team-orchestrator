@@ -1589,6 +1589,104 @@ app.get('/api/slack/info', async (req, res) => {
   });
 });
 
+// ============== GitHub Webhook (AG-10) ==============
+import { gitService } from './git-service';
+
+// GitHub webhook for PR events
+app.post('/api/github/webhook', express.json(), async (req, res) => {
+  const event = req.headers['x-github-event'];
+  const payload = req.body;
+
+  console.log(`[GitHub Webhook] Received event: ${event}`);
+
+  // Verify webhook secret (optional but recommended)
+  const secret = process.env.GITHUB_WEBHOOK_SECRET;
+  if (secret) {
+    const crypto = await import('crypto');
+    const signature = req.headers['x-hub-signature-256'] as string;
+    const hmac = crypto.createHmac('sha256', secret);
+    const digest = 'sha256=' + hmac.update(JSON.stringify(payload)).digest('hex');
+    if (signature !== digest) {
+      console.warn('[GitHub Webhook] Invalid signature');
+      return res.status(401).json({ error: 'Invalid signature' });
+    }
+  }
+
+  // Handle pull_request events
+  if (event === 'pull_request') {
+    const action = payload.action;
+    const pr = payload.pull_request;
+    const prNumber = pr?.number;
+
+    console.log(`[GitHub Webhook] PR #${prNumber} action: ${action}`);
+
+    // Extract task ID from branch name (format: task/{taskId}-{slug})
+    const branchName = pr?.head?.ref;
+    const taskIdMatch = branchName?.match(/^task\/([a-z0-9]+)-/);
+    const taskId = taskIdMatch?.[1];
+
+    if (!taskId) {
+      console.log(`[GitHub Webhook] No task ID found in branch: ${branchName}`);
+      return res.json({ ok: true, message: 'Not a task branch' });
+    }
+
+    // Update task based on PR action
+    if (action === 'closed' && pr?.merged) {
+      // PR was merged - mark task as done and cleanup branch
+      console.log(`[GitHub Webhook] PR #${prNumber} merged for task ${taskId}`);
+
+      await taskDb.updateTask(taskId, {
+        status: 'done',
+        prStatus: 'merged',
+        completedAt: new Date().toISOString(),
+      });
+
+      // Cleanup: delete the branch
+      if (branchName) {
+        await gitService.deleteBranch(branchName);
+      }
+
+      // Post to Slack if channel exists
+      const channelMapping = await taskDb.getChannelMapping(`task-*-${taskId}`);
+      if (channelMapping) {
+        await slackService.postMessage(
+          channelMapping.taskId, // This is actually channelId in this context
+          `✅ *PR Merged!*\n\nPR #${prNumber} has been merged. Task ${taskId} is now complete.`
+        );
+      }
+    } else if (action === 'closed' && !pr?.merged) {
+      // PR was closed without merging
+      await taskDb.updateTask(taskId, {
+        prStatus: 'closed',
+      });
+    } else if (action === 'review_requested' || (action === 'submitted' && payload.review?.state === 'approved')) {
+      // PR was approved
+      await taskDb.updateTask(taskId, {
+        prStatus: 'approved',
+      });
+    }
+  }
+
+  res.json({ ok: true });
+});
+
+// Get GitHub integration info
+app.get('/api/github/info', (req, res) => {
+  res.json({
+    configured: gitService.isConfigured(),
+    webhookEndpoint: '/api/github/webhook',
+    owner: process.env.GITHUB_OWNER || 'Othentic-Labs',
+    repo: process.env.GITHUB_REPO || 'ai-team',
+    instructions: [
+      '1. Go to your repo Settings > Webhooks',
+      '2. Add webhook with URL: https://YOUR_DOMAIN/api/github/webhook',
+      '3. Content type: application/json',
+      '4. Events: Pull requests',
+      '5. (Optional) Add GITHUB_WEBHOOK_SECRET env var for security',
+    ],
+  });
+});
+
 // ============== File Viewer Routes ==============
 
 // View a file's contents (for sharing file links)

@@ -357,6 +357,7 @@
     .column-title .dot.backlog { background: var(--text-muted); }
     .column-title .dot.ready { background: var(--accent-cyan); box-shadow: 0 0 8px var(--accent-cyan); }
     .column-title .dot.in_progress { background: var(--accent-yellow); box-shadow: 0 0 8px var(--accent-yellow); }
+    .column-title .dot.pr_created { background: #9b59b6; box-shadow: 0 0 8px #9b59b6; }
     .column-title .dot.done { background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); }
 
     .column-count {
@@ -429,6 +430,43 @@
     }
 
     .task-owner { color: var(--accent-blue); }
+
+    /* AG-10: PR and branch styles */
+    .task-pr {
+      margin-top: 0.5rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .pr-badge {
+      font-size: 10px;
+      padding: 0.125rem 0.375rem;
+      border-radius: 3px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .pr-open { background: #238636; color: #fff; }
+    .pr-approved { background: #8957e5; color: #fff; }
+    .pr-merged { background: #a371f7; color: #fff; }
+    .pr-closed { background: #da3633; color: #fff; }
+
+    .branch-name {
+      font-size: 9px;
+      color: var(--text-muted);
+      background: rgba(255,255,255,0.05);
+      padding: 0.125rem 0.375rem;
+      border-radius: 3px;
+      font-family: 'JetBrains Mono', monospace;
+      max-width: 150px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
     .add-task-btn {
       width: 100%;
@@ -1416,6 +1454,13 @@
             </div>
             <div class="column-body" id="tasks-in_progress"></div>
           </div>
+          <div class="column" data-status="pr_created">
+            <div class="column-header">
+              <div class="column-title"><span class="dot pr_created"></span> PR REVIEW</div>
+              <span class="column-count" id="count-pr_created">0</span>
+            </div>
+            <div class="column-body" id="tasks-pr_created"></div>
+          </div>
           <div class="column" data-status="done">
             <div class="column-header">
               <div class="column-title"><span class="dot done"></span> DONE</div>
@@ -1456,11 +1501,20 @@
                 <span class="meta-label">COMPLETED:</span>
                 <span class="meta-value" id="detail-completed">-</span>
               </div>
+              <div class="meta-item" id="detail-branch-row" style="display:none;">
+                <span class="meta-label">BRANCH:</span>
+                <span class="meta-value" id="detail-branch" style="font-family:'JetBrains Mono',monospace;font-size:10px;">-</span>
+              </div>
+              <div class="meta-item" id="detail-pr-row" style="display:none;">
+                <span class="meta-label">PR:</span>
+                <span class="meta-value" id="detail-pr">-</span>
+              </div>
             </div>
             <div class="status-buttons" id="detail-status-buttons">
               <button class="status-btn" data-status="backlog">BACKLOG</button>
               <button class="status-btn" data-status="ready">READY</button>
               <button class="status-btn" data-status="in_progress">IN PROGRESS</button>
+              <button class="status-btn" data-status="pr_created">PR REVIEW</button>
               <button class="status-btn" data-status="done">DONE</button>
             </div>
           </div>
@@ -2035,7 +2089,7 @@
       const filteredTasks = applyFilters(tasks);
       updateFilterCount(filteredTasks.length, tasks.length);
 
-      const statuses = ['backlog', 'ready', 'in_progress', 'done'];
+      const statuses = ['backlog', 'ready', 'in_progress', 'pr_created', 'done'];
       statuses.forEach(status => {
         const container = document.getElementById(`tasks-${status}`);
         const statusTasks = filteredTasks.filter(t => t.status === status);
@@ -2059,6 +2113,12 @@
               <span class="task-owner">${task.owner || '-'}</span>
               <span>${task.output ? '✓' : ''}</span>
             </div>
+            ${task.prUrl ? `
+            <div class="task-pr" onclick="event.stopPropagation(); window.open('${task.prUrl}', '_blank')">
+              <span class="pr-badge pr-${task.prStatus || 'open'}">PR #${task.prNumber || ''}</span>
+              ${task.branch ? `<span class="branch-name">${task.branch}</span>` : ''}
+            </div>
+            ` : (task.branch ? `<div class="task-pr"><span class="branch-name">${task.branch}</span></div>` : '')}
           </div>
         `).join('');
       });
@@ -2162,6 +2222,27 @@
       document.getElementById('detail-started').textContent = formatDate(task.startedAt);
       document.getElementById('detail-completed').textContent = formatDate(task.completedAt);
       document.getElementById('detail-description').textContent = task.description || 'No description provided.';
+
+      // AG-10: PR and branch info
+      const branchRow = document.getElementById('detail-branch-row');
+      const prRow = document.getElementById('detail-pr-row');
+
+      if (task.branch) {
+        branchRow.style.display = 'flex';
+        document.getElementById('detail-branch').textContent = task.branch;
+      } else {
+        branchRow.style.display = 'none';
+      }
+
+      if (task.prUrl) {
+        prRow.style.display = 'flex';
+        const prEl = document.getElementById('detail-pr');
+        prEl.innerHTML = `<a href="${task.prUrl}" target="_blank" style="color:var(--accent-cyan);text-decoration:none;">
+          <span class="pr-badge pr-${task.prStatus || 'open'}">PR #${task.prNumber || ''}</span>
+        </a>`;
+      } else {
+        prRow.style.display = 'none';
+      }
 
       const outputEl = document.getElementById('detail-output');
       outputEl.innerHTML = task.output

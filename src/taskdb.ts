@@ -10,7 +10,7 @@ export interface Task {
   id: string;
   title: string;
   description?: string;
-  status: 'backlog' | 'ready' | 'in_progress' | 'done';
+  status: 'backlog' | 'ready' | 'in_progress' | 'pr_created' | 'done';
   owner?: string;
   priority?: 'P0' | 'P1' | 'P2';
   output?: string;
@@ -18,6 +18,11 @@ export interface Task {
   completedAt?: string;
   createdAt: string;
   updatedAt: string;
+  // Git workflow fields (AG-10)
+  branch?: string;
+  prUrl?: string;
+  prNumber?: number;
+  prStatus?: 'open' | 'approved' | 'merged' | 'closed';
 }
 
 export interface Project {
@@ -119,6 +124,11 @@ class TaskDatabase {
           ALTER TABLE tasks ADD COLUMN IF NOT EXISTS output TEXT;
           ALTER TABLE tasks ADD COLUMN IF NOT EXISTS started_at TIMESTAMP;
           ALTER TABLE tasks ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP;
+          -- AG-10: Git workflow columns
+          ALTER TABLE tasks ADD COLUMN IF NOT EXISTS branch VARCHAR(255);
+          ALTER TABLE tasks ADD COLUMN IF NOT EXISTS pr_url VARCHAR(500);
+          ALTER TABLE tasks ADD COLUMN IF NOT EXISTS pr_number INTEGER;
+          ALTER TABLE tasks ADD COLUMN IF NOT EXISTS pr_status VARCHAR(20);
         EXCEPTION WHEN OTHERS THEN NULL;
         END $$;
       `);
@@ -314,7 +324,7 @@ class TaskDatabase {
   async getTask(id: string): Promise<Task | undefined> {
     if (this.usePostgres && this.pg) {
       const result = await this.pg.query(
-        'SELECT id, title, description, status, owner, priority, output, started_at, completed_at, created_at, updated_at FROM tasks WHERE id = $1',
+        'SELECT id, title, description, status, owner, priority, output, started_at, completed_at, created_at, updated_at, branch, pr_url, pr_number, pr_status FROM tasks WHERE id = $1',
         [id]
       );
       if (result.rows.length === 0) return undefined;
@@ -331,6 +341,10 @@ class TaskDatabase {
         completedAt: row.completed_at?.toISOString(),
         createdAt: row.created_at?.toISOString() || new Date().toISOString(),
         updatedAt: row.updated_at?.toISOString() || new Date().toISOString(),
+        branch: row.branch,
+        prUrl: row.pr_url,
+        prNumber: row.pr_number,
+        prStatus: row.pr_status,
       };
     } else if (this.redis) {
       const data = await this.redis.get(this.taskKey(id));
@@ -343,7 +357,7 @@ class TaskDatabase {
     let tasks: Task[] = [];
 
     if (this.usePostgres && this.pg) {
-      let query = 'SELECT id, title, description, status, owner, priority, output, started_at, completed_at, created_at, updated_at FROM tasks WHERE project_id = $1';
+      let query = 'SELECT id, title, description, status, owner, priority, output, started_at, completed_at, created_at, updated_at, branch, pr_url, pr_number, pr_status FROM tasks WHERE project_id = $1';
       const params: string[] = [projectId];
 
       if (status) {
@@ -364,6 +378,10 @@ class TaskDatabase {
         completedAt: row.completed_at?.toISOString(),
         createdAt: row.created_at?.toISOString() || new Date().toISOString(),
         updatedAt: row.updated_at?.toISOString() || new Date().toISOString(),
+        branch: row.branch,
+        prUrl: row.pr_url,
+        prNumber: row.pr_number,
+        prStatus: row.pr_status,
       }));
     } else if (this.redis) {
       const ids = await this.redis.smembers(this.projectTasksKey(projectId));
@@ -396,7 +414,7 @@ class TaskDatabase {
     });
   }
 
-  async updateTask(id: string, updates: Partial<Pick<Task, 'title' | 'description' | 'status' | 'owner' | 'priority' | 'output' | 'startedAt' | 'completedAt'>>): Promise<Task | undefined> {
+  async updateTask(id: string, updates: Partial<Pick<Task, 'title' | 'description' | 'status' | 'owner' | 'priority' | 'output' | 'startedAt' | 'completedAt' | 'branch' | 'prUrl' | 'prNumber' | 'prStatus'>>): Promise<Task | undefined> {
     const task = await this.getTask(id);
     if (!task) return undefined;
 
@@ -408,8 +426,8 @@ class TaskDatabase {
 
     if (this.usePostgres && this.pg) {
       await this.pg.query(
-        `UPDATE tasks SET title = $1, description = $2, status = $3, owner = $4, priority = $5, output = $6, started_at = $7, completed_at = $8, updated_at = $9 WHERE id = $10`,
-        [updated.title, updated.description, updated.status, updated.owner, updated.priority, updated.output, updated.startedAt, updated.completedAt, updated.updatedAt, id]
+        `UPDATE tasks SET title = $1, description = $2, status = $3, owner = $4, priority = $5, output = $6, started_at = $7, completed_at = $8, updated_at = $9, branch = $10, pr_url = $11, pr_number = $12, pr_status = $13 WHERE id = $14`,
+        [updated.title, updated.description, updated.status, updated.owner, updated.priority, updated.output, updated.startedAt, updated.completedAt, updated.updatedAt, updated.branch, updated.prUrl, updated.prNumber, updated.prStatus, id]
       );
     } else if (this.redis) {
       await this.redis.set(this.taskKey(id), JSON.stringify(updated));

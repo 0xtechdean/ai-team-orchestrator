@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Patch, Path, Post, Query, Response, Rout
 import { Task, taskDb } from '../taskdb';
 import { ErrorResponse } from '../types/api';
 import { getOrchestrator } from './orchestration.controller';
+import { gitService } from '../git-service';
 
 interface CreateTaskRequest {
   title: string;
@@ -13,12 +14,17 @@ interface CreateTaskRequest {
 interface UpdateTaskRequest {
   title?: string;
   description?: string;
-  status?: 'backlog' | 'ready' | 'in_progress' | 'done';
+  status?: 'backlog' | 'ready' | 'in_progress' | 'pr_created' | 'done';
   owner?: string;
   priority?: 'P0' | 'P1' | 'P2';
   output?: string;
   startedAt?: string;
   completedAt?: string;
+  // Git workflow fields (AG-10)
+  branch?: string;
+  prUrl?: string;
+  prNumber?: number;
+  prStatus?: 'open' | 'approved' | 'merged' | 'closed';
 }
 
 @Route('api')
@@ -90,10 +96,23 @@ export class TasksController extends Controller {
     if (body.status === 'ready' && currentTask?.status !== 'ready' && task.owner) {
       console.log(`[TasksController] Task ${taskId} moved to ready - triggering ${task.owner} agent`);
 
-      // Update status to in_progress immediately
+      // AG-10: Create a branch for this task
+      let branchName: string | undefined;
+      if (gitService.isConfigured()) {
+        const branchResult = await gitService.createBranch(taskId, task.title);
+        if (branchResult.success && branchResult.branch) {
+          branchName = branchResult.branch;
+          console.log(`[TasksController] Created branch: ${branchName}`);
+        } else {
+          console.warn(`[TasksController] Branch creation failed: ${branchResult.error}`);
+        }
+      }
+
+      // Update status to in_progress with branch info
       await taskDb.updateTask(taskId, {
         status: 'in_progress',
-        startedAt: new Date().toISOString()
+        startedAt: new Date().toISOString(),
+        branch: branchName,
       });
 
       // Run agent asynchronously (don't wait for completion)
@@ -102,9 +121,38 @@ export class TasksController extends Controller {
         orchestrator.runAgent(
           task.owner,
           `${task.title}${task.description ? `: ${task.description}` : ''}`,
-          { taskId }
+          { taskId, branch: branchName }
         ).then(async (result) => {
-          // Mark task as done when agent completes
+          // AG-10: Create PR when agent completes (if git is configured)
+          if (branchName && gitService.isConfigured()) {
+            // Commit any changes made by agent
+            await gitService.createCommit(taskId, `Complete: ${task.title}`);
+
+            // Create PR
+            const prResult = await gitService.createPR(
+              taskId,
+              task.title,
+              task.description || result.substring(0, 500),
+              branchName
+            );
+
+            if (prResult.success && prResult.prUrl && prResult.prNumber) {
+              // Update task with PR info and set status to pr_created
+              await taskDb.updateTask(taskId, {
+                status: 'pr_created',
+                output: result.substring(0, 10000),
+                prUrl: prResult.prUrl,
+                prNumber: prResult.prNumber,
+                prStatus: 'open',
+              });
+              console.log(`[TasksController] Task ${taskId} PR created: ${prResult.prUrl}`);
+              return;
+            } else {
+              console.warn(`[TasksController] PR creation failed: ${prResult.error}`);
+            }
+          }
+
+          // Fallback: Mark task as done if no PR workflow
           await taskDb.updateTask(taskId, {
             status: 'done',
             output: result.substring(0, 10000),

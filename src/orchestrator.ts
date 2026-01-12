@@ -24,6 +24,7 @@ interface AgentContext {
   slackChannelId?: string;
   slackUserId?: string;
   isSlackReply?: boolean;
+  branch?: string; // AG-10: Git branch name for this task
 }
 
 export class AgentOrchestrator {
